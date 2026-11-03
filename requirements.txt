@@ -1,5 +1,8 @@
 fastapi>=0.115,<1.0
-uvicorn[standard]>=0.30
+# uvicorn без [standard]: той тягне pyyaml, яка на нових Python під Windows
+# вимагає компілятора C++. WebSocket для SG-21 даємо явно через websockets.
+uvicorn>=0.30
+websockets>=13
 sqlalchemy>=2.0,<2.1
 alembic>=1.13
 psycopg[binary]>=3.2
