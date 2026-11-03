@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: skyguard
+          POSTGRES_PASSWORD: skyguard
+          POSTGRES_DB: skyguard
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U skyguard"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://skyguard:skyguard@localhost:5432/skyguard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: alembic upgrade head
+      - run: alembic check
+      - run: pytest -q
+      - run: alembic downgrade base
