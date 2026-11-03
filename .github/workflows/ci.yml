@@ -29,7 +29,9 @@ jobs:
           cache: pip
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
+      - run: ruff format --check .
       - run: alembic upgrade head
       - run: alembic check
-      - run: pytest -q
+      - name: pytest + coverage (NFR-M2, поріг 70%)
+        run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=70
       - run: alembic downgrade base

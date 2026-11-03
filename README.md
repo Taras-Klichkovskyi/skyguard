@@ -29,11 +29,11 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-Тести (потребують запущеної БД з міграцією):
+Тести (потребують запущеної БД з міграцією; без неї запуск завершиться помилкою):
 
 ```bash
-pytest -q
-ruff check .
+pytest -q --cov=app        # 19 тестів, звіт покриття (поріг 70%)
+ruff check . && ruff format --check .
 ```
 
 ## Структура
