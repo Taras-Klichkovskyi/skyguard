@@ -66,6 +66,7 @@ class ValidationStatus(StrEnum):
     QUORUM_PENDING = "QUORUM_PENDING"  # DQ-3: чекаємо підтвердження інших звітів
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"  # кворум не зібрано за відведений час або звіт замінено новішим
 
 
 class RejectionCode(StrEnum):

@@ -1,6 +1,6 @@
 # Схема бази даних SkyGuard
 
-Міграції: `0001_initial_schema.py` (таблиці, тригери аудиту) і `0002_align_with_data_governance.py` (довідники за SG-2, ресурси й контакти укриття). СУБД: PostgreSQL 16.
+Міграції: `0001_initial_schema.py` (таблиці, тригери аудиту) `0002_align_with_data_governance.py` (довідники за SG-2, ресурси й контакти укриття) і `0003_status_reports_quorum.py` (ваги ролей і кворум звітів). СУБД: PostgreSQL 16.
 
 Ролі, рівні класифікації та цілі згоди відповідають політиці Data Governance (SG-2, розділ 2.4 звіту).
 
@@ -18,6 +18,7 @@ erDiagram
     ROLE {
         smallint id PK
         varchar code UK "6 ролей SG-2"
+        smallint report_weight "DQ-3"
         varchar name_uk
         text description
     }
@@ -70,6 +71,7 @@ erDiagram
         numeric reporter_latitude
         numeric reporter_longitude
         numeric distance_m "Haversine"
+        smallint weight "DQ-3"
         timestamptz observed_at
         timestamptz received_at
         varchar validation_status
@@ -106,6 +108,8 @@ erDiagram
 | 5 | `SECURITY_AUDITOR` | Аудитор безпеки | Лише журнал аудиту |
 | 6 | `ANONYMOUS` | Анонімний користувач | Без токена: лише публічний реєстр. Користувачам не призначається |
 
+`report_weight` — вага звіту про стан укриття для кворуму DQ-3 (поріг 3): мешканець — 1; волонтер, комендант, оператор ДСНС — 3; решта — 0.
+
 Хто що може, описано політиками доступу в `app/core/policy.py` (див. [API](api.md)).
 
 ### `app_user` — користувачі
@@ -118,7 +122,7 @@ erDiagram
 Цілі: `ROUTE_GPS` (маршрут і пошук найближчого укриття), `REPORT_GEOFENCE` (перевірка присутності біля укриття), `SOS`. Стан згоди (`NOT_GRANTED`, `ACTIVE`, `REVOKED`, `EXPIRED`) обчислюється з дат запису. Записи не редагуються по суті: відкликання заповнює `revoked_at`, повторна згода — новий запис. Частковий унікальний індекс гарантує **не більше однієї активної згоди** на ціль. `policy_version` фіксує, на яку редакцію політики погодився користувач.
 
 ### `status_report` — звіти про статус
-Офіційні (комендант) і краудсорс (громадянин). Зберігаються **всі** звіти, зокрема відхилені — для аналізу якості даних. Рядкове значення `rejection_code` повертається клієнту в тілі відповіді `422`.
+Офіційні (комендант, оператор ДСНС) і краудсорс (мешканець, волонтер). Зберігаються **всі** звіти, зокрема відхилені — для аналізу якості даних. Стани: `QUORUM_PENDING` → `ACCEPTED` або `EXPIRED` (кворум не зібрано за 15 хв чи звіт замінено новішим), `REJECTED` (порушено DQ-1 або DQ-2). `weight` — вага, з якою звіт зараховано. Сирі координати репортера API **не зберігає**: колонки `reporter_latitude` / `reporter_longitude` лишаються порожніми, для DQ-1 досить `distance_m`. Рядкове значення `rejection_code` повертається клієнту в тілі відповіді `422`.
 
 ### `audit_log` — незмінний журнал аудиту
 Кожна значуща дія, включно з кожною відмовою `401` і `403` (`outcome = DENIED`). IP зберігається лише як HMAC-SHA-256. Довідники ролей і класів для цієї таблиці перевіряються лише для нових записів: історію, записану до міграції 0002, не переписано. `id`, `prev_hash`, `hash` присвоює тригер.
@@ -127,9 +131,9 @@ erDiagram
 
 | Правило | Як забезпечено |
 |---|---|
-| **DQ-1** радіус ≤ 100 м | `ck_status_report_dq1_accepted_within_radius`: `ACCEPTED` ⇒ `distance_m ≤ 100` |
+| **DQ-1** радіус ≤ 100 м | `ck_status_report_dq1_accepted_within_radius`: прийнятий краудсорс-звіт ⇒ `distance_m ≤ 100`. Офіційний статус геоприв'язки не потребує |
 | **DQ-2** свіжість ≤ 30 хв | `ck_status_report_dq2_accepted_fresh`: `ACCEPTED` ⇒ `received_at − observed_at ≤ 30 хв` |
-| **DQ-3** кворум | Статус `QUORUM_PENDING`; логіку підрахунку реалізує API (SG-21), індекс `(shelter_id, received_at DESC)` |
+| **DQ-3** кворум | Підрахунок у `app/services/status.py` під блокуванням рядка укриття (`SELECT … FOR UPDATE`), щоб одночасні звіти не розминулися |
 | Відхилений звіт має причину | `ck_status_report_rejection_code_iff_rejected` |
 | Звіт не з майбутнього | `observed_at ≤ received_at + 1 хв` |
 | Коректні координати | CHECK на діапазони широти і довготи |
@@ -147,7 +151,7 @@ erDiagram
 | `app_user` | L3 CONFIDENTIAL | Облікові записи: email, телефон, ім'я |
 | `audit_log` | L3 CONFIDENTIAL | Безпекові події, читає лише `SECURITY_AUDITOR` |
 | `consent_record` | L4 SENSITIVE | Цифровий доказ згоди суб'єкта даних |
-| `status_report` | L4 SENSITIVE | Містить GPS особи на момент звіту |
+| `status_report` | L4 SENSITIVE | Пов'язує особу з місцем і часом перебування |
 
 ## Індекси під основні запити
 

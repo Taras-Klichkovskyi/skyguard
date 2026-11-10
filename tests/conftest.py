@@ -31,7 +31,7 @@ PASSWORD_HASH = hash_password(PASSWORD)
 def require_database() -> None:
     try:
         with engine.connect() as conn:
-            conn.execute(text("SELECT has_water FROM shelter LIMIT 1"))
+            conn.execute(text("SELECT report_weight FROM role LIMIT 1"))
     except Exception as exc:
         pytest.exit(
             "PostgreSQL з застосованими міграціями недоступний: запустіть "
@@ -59,7 +59,10 @@ def client(db) -> TestClient:
     """HTTP-клієнт, що працює в тій самій транзакції, що й фікстура db."""
     app.dependency_overrides[get_db] = lambda: db
     try:
-        yield TestClient(app)
+        # Контекстний менеджер дає один цикл подій на HTTP і WebSocket:
+        # без нього розсилка не дійшла б до WebSocket-з'єднання з того ж тесту.
+        with TestClient(app) as test_client:
+            yield test_client
     finally:
         app.dependency_overrides.clear()
 

@@ -2,26 +2,36 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from sqlalchemy import select
 
 from app.api.deps import DbSession, authorize, deny_rbac
 from app.core.config import get_settings
 from app.core.errors import ApiError
-from app.core.policy import SHELTER_NEARBY_SEARCH, SHELTER_READ_CONTACTS
+from app.core.policy import (
+    SHELTER_NEARBY_SEARCH,
+    SHELTER_READ_CONTACTS,
+    SHELTER_STATUS_REPORT,
+    SHELTER_STATUS_UPDATE,
+)
 from app.models import Shelter, User
-from app.models.enums import AuditOutcome, ShelterStatus
+from app.models.enums import AuditOutcome, ReportType, ShelterStatus
 from app.schemas.common import FORBIDDEN, NOT_FOUND, UNAUTHORIZED, ErrorOut
 from app.schemas.shelter import (
     NearbyIn,
     PointGeometry,
+    QuorumOut,
     ShelterContactsOut,
     ShelterFeature,
     ShelterFeatureCollection,
     ShelterProperties,
     ShelterResources,
+    StatusReportIn,
+    StatusSubmissionOut,
+    StatusUpdateIn,
 )
-from app.services import audit
+from app.services import audit, notify
+from app.services import status as status_service
 from app.services.geo import haversine_m, walk_minutes
 
 router = APIRouter(prefix="/api/v1/shelters", tags=["shelters"])
@@ -215,3 +225,214 @@ def shelter_contacts(
         commander_name=shelter.commander_name,
         commander_phone=shelter.commander_phone,
     )
+
+
+# ---------- зміна статусу (SG-21) ----------
+
+DQ_FAILED = {
+    422: {"model": ErrorOut, "description": "Порушено правило якості даних DQ-1 або DQ-2"},
+    429: {"model": ErrorOut, "description": "Перевищено частоту звітів"},
+}
+
+
+def _submission_out(submission: status_service.Submission, shelter: Shelter) -> StatusSubmissionOut:
+    report, quorum = submission.report, submission.quorum
+    return StatusSubmissionOut(
+        report_id=report.id,
+        shelter_id=shelter.id,
+        reported_status=report.reported_status,
+        applied=submission.applied,
+        validation_status=report.validation_status,
+        distance_m=float(report.distance_m) if report.distance_m is not None else None,
+        quorum=(
+            QuorumOut(
+                collected=quorum.collected, required=quorum.required, window_min=quorum.window_min
+            )
+            if quorum
+            else None
+        ),
+        shelter=to_feature(shelter),
+    )
+
+
+def _notify(background: BackgroundTasks, shelter: Shelter, source: ReportType) -> None:
+    """Сповіщення йде у фон після коміту: відповідь клієнту не чекає на розсилку."""
+    feature = to_feature(shelter).model_dump(mode="json")
+    background.add_task(notify.hub.broadcast, notify.shelter_updated(feature, source))
+
+
+@router.post(
+    "/{shelter_id}/status",
+    response_model=StatusSubmissionOut,
+    responses={**UNAUTHORIZED, **FORBIDDEN, **NOT_FOUND},
+)
+def update_status(
+    shelter_id: uuid.UUID,
+    body: StatusUpdateIn,
+    request: Request,
+    background: BackgroundTasks,
+    db: DbSession,
+    user: Annotated[User, Depends(authorize(SHELTER_STATUS_UPDATE))],
+) -> StatusSubmissionOut:
+    """Офіційний статус укриття. Застосовується одразу і розсилається підписникам.
+
+    Комендант змінює статус лише закріпленого за ним укриття, оператор ДСНС — будь-якого.
+    """
+    policy = SHELTER_STATUS_UPDATE
+    if policy.needs_ownership(user.role.code) and user.assigned_shelter_id != shelter_id:
+        raise deny_rbac(
+            db,
+            request,
+            user,
+            policy,
+            reason="not_resource_owner",
+            entity_type="shelter",
+            entity_id=shelter_id,
+        )
+    shelter = status_service.lock_shelter(db, shelter_id)
+    if shelter is None:
+        raise ApiError(404, "SHELTER_NOT_FOUND", "Укриття не знайдено")
+    if body.occupancy is not None and body.occupancy > shelter.capacity:
+        raise ApiError(
+            422,
+            "VALIDATION_ERROR",
+            f"Заповненість не може перевищувати місткість укриття ({shelter.capacity})",
+        )
+    previous = shelter.current_status
+    submission = status_service.submit_official(
+        db, shelter, user, body.status, body.occupancy, body.comment, datetime.now(UTC)
+    )
+    audit.record(
+        db,
+        request,
+        action="UPDATE_STATUS_VERIFIED",
+        outcome=AuditOutcome.SUCCESS,
+        http_status=200,
+        actor=user,
+        classification=policy.classification,
+        entity_type="shelter",
+        entity_id=shelter.id,
+        details={
+            "report_id": str(submission.report.id),
+            "source": ReportType.OFFICIAL,
+            "from": previous,
+            "to": body.status,
+        },
+    )
+    db.commit()
+    _notify(background, shelter, ReportType.OFFICIAL)
+    return _submission_out(submission, shelter)
+
+
+@router.post(
+    "/{shelter_id}/reports",
+    response_model=StatusSubmissionOut,
+    responses={**UNAUTHORIZED, **FORBIDDEN, **NOT_FOUND, **DQ_FAILED},
+)
+def report_status(
+    shelter_id: uuid.UUID,
+    body: StatusReportIn,
+    request: Request,
+    background: BackgroundTasks,
+    db: DbSession,
+    user: Annotated[User, Depends(authorize(SHELTER_STATUS_REPORT))],
+) -> StatusSubmissionOut:
+    """Краудсорс-звіт про стан укриття. Потрібна згода REPORT_GEOFENCE.
+
+    Звіт проходить DQ-2 (свіжість ≤ 30 хв) і DQ-1 (Haversine ≤ 100 м), інакше — 422.
+    Публічний статус змінюється, коли зібрано кворум DQ-3: три незалежні звіти мешканців
+    за 15 хв або один звіт верифікованого волонтера. До того `applied = false`.
+    """
+    policy = SHELTER_STATUS_REPORT
+    settings = get_settings()
+    now = datetime.now(UTC)
+    shelter = status_service.lock_shelter(db, shelter_id)
+    if shelter is None:
+        raise ApiError(404, "SHELTER_NOT_FOUND", "Укриття не знайдено")
+    if status_service.recent_reports(db, user.id, now) >= settings.report_rate_limit:
+        entry = audit.record(
+            db,
+            request,
+            action="RATE_LIMITED_429",
+            outcome=AuditOutcome.DENIED,
+            http_status=429,
+            actor=user,
+            classification=policy.classification,
+            entity_type="shelter",
+            entity_id=shelter.id,
+            commit=True,
+        )
+        raise ApiError(
+            429,
+            "RATE_LIMITED",
+            f"Не більше {settings.report_rate_limit} звітів за "
+            f"{settings.report_rate_window_min} хв. Спробуйте пізніше.",
+            headers={"Retry-After": str(settings.report_rate_window_min * 60)},
+            audit_entry_id=entry.id,
+        )
+    observed_at = body.observed_at or now
+    if observed_at > now + timedelta(minutes=1):
+        raise ApiError(422, "VALIDATION_ERROR", "observed_at не може бути в майбутньому")
+
+    distance_m = haversine_m(
+        body.latitude, body.longitude, float(shelter.latitude), float(shelter.longitude)
+    )
+    # Далі координати не передаються: зберігається лише виміряна відстань
+    submission = status_service.submit_crowd(
+        db, shelter, user, body.status, distance_m, observed_at, body.comment, now
+    )
+    report, violation = submission.report, submission.violation
+
+    if violation is not None:
+        entry = audit.record(
+            db,
+            request,
+            action="FAILED_DQ_422",
+            outcome=AuditOutcome.DENIED,
+            http_status=422,
+            actor=user,
+            classification=policy.classification,
+            entity_type="shelter",
+            entity_id=shelter.id,
+            details={
+                "report_id": str(report.id),
+                "rule": violation.rule,
+                "code": violation.code,
+                **violation.details,
+            },
+        )
+        db.commit()  # відхилений звіт і запис аудиту зберігаються, хоча запит відхилено
+        raise ApiError(
+            422,
+            violation.code,
+            violation.message,
+            rule=violation.rule,
+            **violation.details,
+            report_id=str(report.id),
+            audit_entry_id=entry.id,
+        )
+
+    audit.record(
+        db,
+        request,
+        action="UPDATE_STATUS_VERIFIED" if submission.applied else "UPDATE_STATUS_PENDING",
+        outcome=AuditOutcome.SUCCESS,
+        http_status=200,
+        actor=user,
+        classification=policy.classification,
+        entity_type="shelter",
+        entity_id=shelter.id,
+        details={
+            "report_id": str(report.id),
+            "source": ReportType.CROWDSOURCE,
+            "reported_status": body.status,
+            "distance_m": float(report.distance_m),
+            "weight": report.weight,
+            "quorum_collected": submission.quorum.collected,
+            "quorum_required": submission.quorum.required,
+        },
+    )
+    db.commit()
+    if submission.applied:
+        _notify(background, shelter, ReportType.CROWDSOURCE)
+    return _submission_out(submission, shelter)

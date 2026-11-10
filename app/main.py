@@ -1,22 +1,44 @@
+import asyncio
+import contextlib
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, consents, health, shelters
+from app.api.routes import auth, consents, health, shelters, ws
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
+from app.services import sweeper
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    task = (
+        asyncio.create_task(sweeper.run_forever(settings.sweep_interval_s))
+        if settings.sweep_interval_s > 0
+        else None
+    )
+    yield
+    if task is not None:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
 app = FastAPI(
     title=settings.app_name,
-    version="0.2.0",
+    version="0.3.0",
+    lifespan=lifespan,
     description=(
         "Прототип керованого обміну геоданими про укриття (SkyGuard).\n\n"
         "Публічний реєстр укриттів доступний без токена. Захищені ендпоінти проходять "
         "шлюз доступу: автентифікація (401) → роль (403) → згода (403); кожна відмова "
-        "записується в журнал аудиту, а її номер повертається в `audit_entry_id`."
+        "записується в журнал аудиту, а її номер повертається в `audit_entry_id`.\n\n"
+        "Краудсорс-звіти проходять правила якості DQ-1 (≤ 100 м), DQ-2 (≤ 30 хв) і DQ-3 "
+        "(кворум). Застосовані зміни статусу розсилаються через WebSocket `/ws/v1/shelters`."
     ),
 )
 
@@ -45,7 +67,6 @@ app.include_router(auth.router)
 app.include_router(consents.router)
 app.include_router(shelters.router)
 
-# Наступні роутери:
-#   /api/v1/shelters/{id}/status  — статус від коменданта, краудсорс-звіт, DQ (SG-21)
-#   /api/v1/governance/audit-trail — консоль аудитора (SG-11)
-#   /ws/shelters                  — push-оновлення статусів (SG-21)
+app.include_router(ws.router)
+
+# Наступний роутер: /api/v1/governance/audit-trail — консоль аудитора (SG-11)
