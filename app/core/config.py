@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     # Правила якості даних (SG-2)
     dq_max_distance_m: int = 100  # DQ-1
     dq_max_age_min: int = 30  # DQ-2
+    dq_quorum_weight: int = 3  # DQ-3: сума ваг звітів, потрібна для зміни статусу
+    dq_quorum_window_min: int = 15  # DQ-3: вікно, у якому збирається кворум
+
+    # Захист від спаму звітами (NFR-B9)
+    report_rate_limit: int = 3  # UC-02 EX4: не більше 3 звітів…
+    report_rate_window_min: int = 5  # …за 5 хвилин від одного користувача
+    # Як часто фонове завдання анулює звіти без кворуму; 0 — вимкнено
+    sweep_interval_s: int = 60
 
     @model_validator(mode="after")
     def _no_dev_secret_outside_dev(self) -> "Settings":

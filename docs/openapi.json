@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SkyGuard API",
-    "description": "Прототип керованого обміну геоданими про укриття (SkyGuard).\n\nПублічний реєстр укриттів доступний без токена. Захищені ендпоінти проходять шлюз доступу: автентифікація (401) → роль (403) → згода (403); кожна відмова записується в журнал аудиту, а її номер повертається в `audit_entry_id`.",
-    "version": "0.2.0"
+    "description": "Прототип керованого обміну геоданими про укриття (SkyGuard).\n\nПублічний реєстр укриттів доступний без токена. Захищені ендпоінти проходять шлюз доступу: автентифікація (401) → роль (403) → згода (403); кожна відмова записується в журнал аудиту, а її номер повертається в `audit_entry_id`.\n\nКраудсорс-звіти проходять правила якості DQ-1 (≤ 100 м), DQ-2 (≤ 30 хв) і DQ-3 (кворум). Застосовані зміни статусу розсилаються через WebSocket `/ws/v1/shelters`.",
+    "version": "0.3.0"
   },
   "paths": {
     "/health/live": {
@@ -789,6 +789,194 @@
           }
         }
       }
+    },
+    "/api/v1/shelters/{shelter_id}/status": {
+      "post": {
+        "tags": [
+          "shelters"
+        ],
+        "summary": "Update Status",
+        "description": "Офіційний статус укриття. Застосовується одразу і розсилається підписникам.\n\nКомендант змінює статус лише закріпленого за ним укриття, оператор ДСНС — будь-якого.",
+        "operationId": "update_status_api_v1_shelters__shelter_id__status_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shelter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Shelter Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusUpdateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusSubmissionOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Немає або недійсний токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Роль не має прав або немає згоди",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не знайдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shelters/{shelter_id}/reports": {
+      "post": {
+        "tags": [
+          "shelters"
+        ],
+        "summary": "Report Status",
+        "description": "Краудсорс-звіт про стан укриття. Потрібна згода REPORT_GEOFENCE.\n\nЗвіт проходить DQ-2 (свіжість ≤ 30 хв) і DQ-1 (Haversine ≤ 100 м), інакше — 422.\nПублічний статус змінюється, коли зібрано кворум DQ-3: три незалежні звіти мешканців\nза 15 хв або один звіт верифікованого волонтера. До того `applied = false`.",
+        "operationId": "report_status_api_v1_shelters__shelter_id__reports_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shelter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Shelter Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusReportIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusSubmissionOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Немає або недійсний токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Роль не має прав або немає згоди",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не знайдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Порушено правило якості даних DQ-1 або DQ-2",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Перевищено частоту звітів",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1046,6 +1234,30 @@
           "coordinates"
         ],
         "title": "PointGeometry"
+      },
+      "QuorumOut": {
+        "properties": {
+          "collected": {
+            "type": "integer",
+            "title": "Collected",
+            "description": "Сума ваг звітів, що підтверджують цей статус"
+          },
+          "required": {
+            "type": "integer",
+            "title": "Required"
+          },
+          "window_min": {
+            "type": "integer",
+            "title": "Window Min"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collected",
+          "required",
+          "window_min"
+        ],
+        "title": "QuorumOut"
       },
       "RefreshIn": {
         "properties": {
@@ -1376,6 +1588,175 @@
         ],
         "title": "ShelterType"
       },
+      "StatusReportIn": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "FULL",
+              "CLOSED"
+            ],
+            "title": "Status"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "examples": [
+              49.8397
+            ]
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "examples": [
+              24.0297
+            ]
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At",
+            "description": "Час спостереження (ISO 8601 з часовим поясом); типово — зараз"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "latitude",
+          "longitude"
+        ],
+        "title": "StatusReportIn",
+        "description": "Краудсорс-звіт. Координати потрібні лише для перевірки DQ-1 і не зберігаються."
+      },
+      "StatusSubmissionOut": {
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Report Id"
+          },
+          "shelter_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Shelter Id"
+          },
+          "reported_status": {
+            "$ref": "#/components/schemas/ShelterStatus"
+          },
+          "applied": {
+            "type": "boolean",
+            "title": "Applied",
+            "description": "Чи змінено публічний статус укриття"
+          },
+          "validation_status": {
+            "$ref": "#/components/schemas/ValidationStatus"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M",
+            "description": "Виміряна сервером відстань, DQ-1"
+          },
+          "quorum": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuorumOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Стан кворуму DQ-3"
+          },
+          "shelter": {
+            "$ref": "#/components/schemas/ShelterFeature"
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_id",
+          "shelter_id",
+          "reported_status",
+          "applied",
+          "validation_status",
+          "shelter"
+        ],
+        "title": "StatusSubmissionOut"
+      },
+      "StatusUpdateIn": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "FULL",
+              "CLOSED"
+            ],
+            "title": "Status"
+          },
+          "occupancy": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occupancy",
+            "description": "Скільки людей зараз в укритті"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "StatusUpdateIn",
+        "description": "Офіційний статус від коменданта або оператора ДСНС."
+      },
       "TokenOut": {
         "properties": {
           "access_token": {
@@ -1496,6 +1877,17 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ValidationStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "QUORUM_PENDING",
+          "ACCEPTED",
+          "REJECTED",
+          "EXPIRED"
+        ],
+        "title": "ValidationStatus"
       }
     },
     "securitySchemes": {

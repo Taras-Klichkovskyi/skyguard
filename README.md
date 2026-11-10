@@ -57,14 +57,14 @@ ruff check . && ruff format --check .
 ```
 app/
   api/deps.py     шлюз доступу: автентифікація → роль → згода, аудит відмов
-  api/routes/     маршрути: auth, consents, shelters, health
+  api/routes/     маршрути: auth, consents, shelters (реєстр, статус, звіти), ws, health
   core/           налаштування, JWT і паролі, політики доступу (RBAC), формат помилок
   db/             підключення, базовий клас моделей
   models/         Shelter, User, Role, ConsentRecord, StatusReport, AuditLog
   schemas/        моделі запитів і відповідей (GeoJSON)
-  services/       аудит, згода, геообчислення (Haversine)
+  services/       аудит, згода, Haversine, правила DQ-1..DQ-3, зміна статусу, WebSocket-розсилка
   seed.py         демо-дані
-migrations/       Alembic: 0001 — схема і тригери аудиту, 0002 — довідники за SG-2
+migrations/       Alembic: 0001 — схема і тригери аудиту, 0002 — довідники за SG-2, 0003 — кворум
 tests/            тести API і гарантій схеми на справжньому PostgreSQL
 docs/
   api.md          контракт API: ендпоінти, помилки, матриця доступу
@@ -85,4 +85,4 @@ frontend/         Leaflet-клієнт (SG-9)
 
 ## Команда і задачі
 
-Беклог у Jira, проєкт `SKYG`. Зроблено: SG-19 (основа, схема БД), SG-10 (автентифікація, RBAC-шлюз, згода, публічний реєстр). Далі: SG-21 (статуси, DQ, WebSocket), інтеграція SG-11 (консоль аудитора), SG-24 (запуск з нуля).
+Беклог у Jira, проєкт `SKYG`. Зроблено: SG-19 (основа, схема БД), SG-10 (автентифікація, RBAC-шлюз, згода, публічний реєстр), SG-21 (статус укриття, краудсорс-звіти, DQ-1..DQ-3, WebSocket). Далі: інтеграція SG-11 (консоль аудитора), SG-24 (запуск з нуля).

@@ -9,6 +9,7 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Uuid,
     func,
@@ -30,7 +31,7 @@ from app.models.mixins import UUIDPkMixin, str_enum
 class StatusReport(UUIDPkMixin, Base):
     """Звіт про статус укриття: офіційний (комендант) або краудсорс (громадянин).
 
-    Клас даних: SENSITIVE (L4) — містить геопозицію автора на момент звіту.
+    Клас даних: SENSITIVE (L4) — пов'язує особу з місцем і часом перебування.
     Правила DQ-1 (≤100 м) і DQ-2 (≤30 хв) перевіряються в API (SG-21),
     а CHECK-обмеження нижче — страховка на рівні БД: ACCEPTED-звіт, що їх
     порушує, не може бути збережений навіть у разі помилки в коді.
@@ -51,9 +52,12 @@ class StatusReport(UUIDPkMixin, Base):
     occupancy: Mapped[int | None] = mapped_column(Integer)
     comment: Mapped[str | None] = mapped_column(String(500))
 
-    reporter_latitude: Mapped[Decimal] = mapped_column(Numeric(9, 6))
-    reporter_longitude: Mapped[Decimal] = mapped_column(Numeric(9, 6))
+    # Сирі координати репортера API не зберігає (мінімізація даних, SG-2):
+    # для перевірки DQ-1 достатньо виміряної відстані distance_m.
+    reporter_latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    reporter_longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
     distance_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 1))  # Haversine до укриття
+    weight: Mapped[int] = mapped_column(SmallInteger, server_default=text("1"))  # для DQ-3
 
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # час спостереження
     received_at: Mapped[datetime] = mapped_column(
@@ -82,9 +86,11 @@ class StatusReport(UUIDPkMixin, Base):
         CheckConstraint("reporter_longitude BETWEEN -180 AND 180", name="lon_range"),
         CheckConstraint("occupancy IS NULL OR occupancy >= 0", name="occupancy_non_negative"),
         CheckConstraint("observed_at <= received_at + interval '1 minute'", name="not_from_future"),
-        # DQ-1: прийнятий звіт — лише в межах 100 м від укриття
+        # DQ-1: прийнятий краудсорс-звіт — лише в межах 100 м від укриття.
+        # Офіційний статус коменданта чи оператора ДСНС геоприв'язки не потребує.
         CheckConstraint(
-            "validation_status <> 'ACCEPTED' OR (distance_m IS NOT NULL AND distance_m <= 100)",
+            "validation_status <> 'ACCEPTED' OR report_type = 'OFFICIAL' "
+            "OR (distance_m IS NOT NULL AND distance_m <= 100)",
             name="dq1_accepted_within_radius",
         ),
         # DQ-2: прийнятий звіт — не старший за 30 хв на момент отримання

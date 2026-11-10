@@ -56,4 +56,27 @@ CONSENT_MANAGE_OWN = AccessPolicy(
     allowed_roles=AUTHENTICATED,
 )
 
-ALL_POLICIES = (SHELTER_READ_CONTACTS, SHELTER_NEARBY_SEARCH, CONSENT_MANAGE_OWN)
+# Офіційний статус укриття: комендант — лише свого, оператор ДСНС — будь-якого
+SHELTER_STATUS_UPDATE = AccessPolicy(
+    action="SHELTER_STATUS_UPDATE",
+    classification=DataClassification.PUBLIC,
+    allowed_roles=frozenset({R.SHELTER_MANAGER, R.DSNS_OPERATOR}),
+    ownership_roles=frozenset({R.SHELTER_MANAGER}),
+)
+
+# Краудсорс-звіт про стан укриття: містить GPS репортера (L4), тому потрібна
+# згода REPORT_GEOFENCE. Далі звіт проходить правила якості DQ-1..DQ-3.
+SHELTER_STATUS_REPORT = AccessPolicy(
+    action="SHELTER_STATUS_REPORT",
+    classification=DataClassification.SENSITIVE,
+    allowed_roles=frozenset({R.CITIZEN, R.VERIFIED_VOLUNTEER}),
+    requires_consent=ConsentPurpose.REPORT_GEOFENCE,
+)
+
+ALL_POLICIES = (
+    SHELTER_READ_CONTACTS,
+    SHELTER_NEARBY_SEARCH,
+    CONSENT_MANAGE_OWN,
+    SHELTER_STATUS_UPDATE,
+    SHELTER_STATUS_REPORT,
+)
