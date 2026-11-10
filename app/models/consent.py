@@ -12,7 +12,7 @@ from app.models.mixins import UUIDPkMixin, str_enum
 class ConsentRecord(UUIDPkMixin, Base):
     """Згода на обробку ПДн (ЗУ «Про захист персональних даних», GDPR ст. 7).
 
-    Клас даних: CONFIDENTIAL. Записи не редагуються: відкликання = заповнення
+    Клас даних: SENSITIVE (L4). Записи не редагуються: відкликання = заповнення
     revoked_at, повторна видача = новий запис. Так зберігається доказова історія.
     """
 

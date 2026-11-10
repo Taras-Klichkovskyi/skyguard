@@ -19,7 +19,9 @@ from app.models.mixins import TimestampMixin, UUIDPkMixin, str_enum
 
 
 class Shelter(UUIDPkMixin, TimestampMixin, Base):
-    """Укриття. Клас даних: PUBLIC. Віддається споживачам як GeoJSON Feature (SG-1).
+    """Укриття. Клас даних: PUBLIC (крім контактів коменданта).
+
+    Віддається споживачам як GeoJSON Feature (SG-1).
 
     Координати — WGS84 (EPSG:4326), окремі колонки lat/lon: для прототипу
     Haversine рахується в застосунку (SG-21), PostGIS не потрібен.
@@ -35,7 +37,15 @@ class Shelter(UUIDPkMixin, TimestampMixin, Base):
     longitude: Mapped[Decimal] = mapped_column(Numeric(9, 6))
     shelter_type: Mapped[ShelterType] = mapped_column(str_enum(ShelterType, "shelter_type"))
     capacity: Mapped[int] = mapped_column(Integer)
-    is_accessible: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    is_accessible: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))  # пандус
+    has_generator: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    has_starlink: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    has_water: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+
+    # Контакти коменданта — клас CONFIDENTIAL (L3): у публічний GeoJSON не потрапляють,
+    # віддаються лише окремим ендпоінтом за політикою SHELTER_READ_CONTACTS.
+    commander_name: Mapped[str | None] = mapped_column(String(200))
+    commander_phone: Mapped[str | None] = mapped_column(String(20))
 
     # Поточний (денормалізований) статус — останній ACCEPTED StatusReport
     current_status: Mapped[ShelterStatus] = mapped_column(

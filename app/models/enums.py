@@ -8,23 +8,23 @@ from enum import StrEnum
 
 
 class RoleCode(StrEnum):
-    """6 ролей RBAC (SG-2)."""
+    """6 ролей RBAC за політикою Data Governance (SG-2)."""
 
-    CITIZEN = "CITIZEN"  # громадянин: бачить мапу, надсилає краудсорс-звіт
-    COMMANDANT = "COMMANDANT"  # комендант укриття: офіційний статус свого укриття
-    MUNICIPAL_OPERATOR = "MUNICIPAL_OPERATOR"  # оператор міськради: веде реєстр укриттів
-    EMERGENCY_SERVICE = "EMERGENCY_SERVICE"  # ДСНС / екстрені служби: споживач real-time
-    AUDITOR = "AUDITOR"  # аудитор: лише читання журналу аудиту
-    ADMIN = "ADMIN"  # адміністратор: користувачі та ролі
+    ANONYMOUS = "ANONYMOUS"  # без токена: лише публічна мапа укриттів
+    CITIZEN = "CITIZEN"  # мешканець: маршрут за згодою, краудсорс-звіти
+    VERIFIED_VOLUNTEER = "VERIFIED_VOLUNTEER"  # волонтер: звіти з підвищеною вагою
+    SHELTER_MANAGER = "SHELTER_MANAGER"  # комендант: керує закріпленим укриттям
+    DSNS_OPERATOR = "DSNS_OPERATOR"  # оператор ДСНС: моніторинг, контакти комендантів, SOS
+    SECURITY_AUDITOR = "SECURITY_AUDITOR"  # аудитор безпеки: лише журнал аудиту
 
 
 class DataClassification(StrEnum):
-    """4-рівнева класифікація даних (SG-2)."""
+    """4-рівнева класифікація даних L1–L4 (SG-2)."""
 
-    PUBLIC = "PUBLIC"  # публічні: реєстр укриттів, статус
-    INTERNAL = "INTERNAL"  # службові: агреговані звіти, метрики
-    CONFIDENTIAL = "CONFIDENTIAL"  # конфіденційні: ПДн, геолокація користувача, згоди
-    RESTRICTED = "RESTRICTED"  # обмеженого доступу: журнал аудиту, безпекові події
+    PUBLIC = "PUBLIC"  # L1: реєстр укриттів, статус
+    INTERNAL = "INTERNAL"  # L2: телеметрія, службові довідники
+    CONFIDENTIAL = "CONFIDENTIAL"  # L3: контакти комендантів, облікові записи, журнал аудиту
+    SENSITIVE = "SENSITIVE"  # L4: GPS мешканця, SOS, записи згоди
 
 
 class ShelterType(StrEnum):
@@ -42,9 +42,18 @@ class ShelterStatus(StrEnum):
 
 
 class ConsentPurpose(StrEnum):
-    GEOLOCATION = "GEOLOCATION"  # обробка геопозиції для пошуку найближчого укриття
-    PUSH_NOTIFICATIONS = "PUSH_NOTIFICATIONS"  # сповіщення про зміну статусу
-    CROWDSOURCE_REPORTING = "CROWDSOURCE_REPORTING"  # надсилання звітів з геоміткою
+    """Гранулярні цілі обробки GPS (ст. 11 ЗУ «Про захист персональних даних»)."""
+
+    ROUTE_GPS = "ROUTE_GPS"  # маршрут і пошук найближчого укриття
+    REPORT_GEOFENCE = "REPORT_GEOFENCE"  # перевірка присутності біля укриття (DQ-1)
+    SOS = "SOS"  # передача координат черговим службам
+
+
+class ConsentStatus(StrEnum):
+    NOT_GRANTED = "NOT_GRANTED"
+    ACTIVE = "ACTIVE"
+    REVOKED = "REVOKED"
+    EXPIRED = "EXPIRED"
 
 
 class ReportType(StrEnum):

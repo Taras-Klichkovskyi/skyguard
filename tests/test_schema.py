@@ -110,23 +110,21 @@ def test_user_email_unique_case_insensitive(db):
 
 def test_only_one_active_consent_per_purpose(db):
     u = make_user(db)
-    db.add(ConsentRecord(user_id=u.id, purpose=ConsentPurpose.GEOLOCATION, policy_version="1.0"))
+    db.add(ConsentRecord(user_id=u.id, purpose=ConsentPurpose.ROUTE_GPS, policy_version="1.0"))
     db.flush()
     with pytest.raises(IntegrityError):
-        db.add(
-            ConsentRecord(user_id=u.id, purpose=ConsentPurpose.GEOLOCATION, policy_version="1.0")
-        )
+        db.add(ConsentRecord(user_id=u.id, purpose=ConsentPurpose.ROUTE_GPS, policy_version="1.0"))
         db.flush()
 
 
 def test_consent_can_be_regranted_after_revoke(db):
     u = make_user(db)
-    c = ConsentRecord(user_id=u.id, purpose=ConsentPurpose.GEOLOCATION, policy_version="1.0")
+    c = ConsentRecord(user_id=u.id, purpose=ConsentPurpose.ROUTE_GPS, policy_version="1.0")
     db.add(c)
     db.flush()
     c.revoked_at = datetime.now(UTC) + timedelta(seconds=1)
     db.flush()
-    db.add(ConsentRecord(user_id=u.id, purpose=ConsentPurpose.GEOLOCATION, policy_version="1.1"))
+    db.add(ConsentRecord(user_id=u.id, purpose=ConsentPurpose.ROUTE_GPS, policy_version="1.1"))
     db.flush()
 
 

@@ -1,8 +1,8 @@
 # Схема бази даних SkyGuard
 
-Міграція: `migrations/versions/0001_initial_schema.py`. СУБД: PostgreSQL 16.
+Міграції: `0001_initial_schema.py` (таблиці, тригери аудиту) і `0002_align_with_data_governance.py` (довідники за SG-2, ресурси й контакти укриття). СУБД: PostgreSQL 16.
 
-> **Звірити з SG-2.** Коди 6 ролей і відповідність таблиць рівням класифікації взято з формулювань задач SG-1, SG-2 і SG-21. Якщо в документі Data Governance назви інші — потрібна лише правка довідника `RoleCode` / `DataClassification` і засіву ролей у міграції.
+Ролі, рівні класифікації та цілі згоди відповідають політиці Data Governance (SG-2, розділ 2.4 звіту).
 
 ## ER-діаграма
 
@@ -17,7 +17,7 @@ erDiagram
 
     ROLE {
         smallint id PK
-        varchar code UK "CITIZEN..ADMIN"
+        varchar code UK "6 ролей SG-2"
         varchar name_uk
         text description
     }
@@ -42,6 +42,11 @@ erDiagram
         varchar shelter_type
         int capacity
         boolean is_accessible
+        boolean has_generator
+        boolean has_starlink
+        boolean has_water
+        varchar commander_name "CONFIDENTIAL"
+        varchar commander_phone "CONFIDENTIAL"
         varchar current_status "OPEN/FULL/CLOSED/UNKNOWN"
         int current_occupancy
         timestamptz status_updated_at
@@ -94,27 +99,29 @@ erDiagram
 
 | id | code | Роль | Основні дозволи |
 |---|---|---|---|
-| 1 | `CITIZEN` | Громадянин | Мапа укриттів, краудсорс-звіт (за наявності згоди) |
-| 2 | `COMMANDANT` | Комендант укриття | Офіційний статус **лише свого** укриття (`assigned_shelter_id`) |
-| 3 | `MUNICIPAL_OPERATOR` | Оператор міськради | Ведення реєстру укриттів |
-| 4 | `EMERGENCY_SERVICE` | Екстрена служба (ДСНС) | Статуси в реальному часі, SOS-режим |
-| 5 | `AUDITOR` | Аудитор | Лише читання журналу аудиту |
-| 6 | `ADMIN` | Адміністратор | Користувачі та ролі; **не** має доступу на зміну аудиту |
+| 1 | `CITIZEN` | Мешканець | Маршрут до укриття за згодою, краудсорс-звіти |
+| 2 | `SHELTER_MANAGER` | Комендант укриття | Статус і контакти **лише свого** укриття (`assigned_shelter_id`) |
+| 3 | `VERIFIED_VOLUNTEER` | Верифікований волонтер | Звіти з підвищеною вагою |
+| 4 | `DSNS_OPERATOR` | Оператор ДСНС | Моніторинг, контакти комендантів, SOS |
+| 5 | `SECURITY_AUDITOR` | Аудитор безпеки | Лише журнал аудиту |
+| 6 | `ANONYMOUS` | Анонімний користувач | Без токена: лише публічний реєстр. Користувачам не призначається |
+
+Хто що може, описано політиками доступу в `app/core/policy.py` (див. [API](api.md)).
 
 ### `app_user` — користувачі
 Назва `app_user`, бо `user` — зарезервоване слово PostgreSQL. Одна роль на користувача. Email унікальний без урахування регістру. Видалення лише м'яке (`deleted_at`) з подальшою анонімізацією полів ПДн: жорстке видалення заблоковане зовнішнім ключем з журналу аудиту.
 
 ### `shelter` — укриття
-Публічні дані реєстру. `current_status` / `current_occupancy` — денормалізований останній прийнятий звіт, щоб мапа читала одну таблицю. Для споживачів віддається як GeoJSON `Feature` (геометрія `Point` з `longitude, latitude`). `registry_synced_at` — штатний режим, синхронізація раз на 24 год.
+Публічні дані реєстру, зокрема ресурси (`is_accessible` — пандус, `has_generator`, `has_starlink`, `has_water`). Виняток — `commander_name` і `commander_phone`: це клас CONFIDENTIAL, у GeoJSON вони не потрапляють і віддаються окремим захищеним ендпоінтом. `current_status` / `current_occupancy` — денормалізований останній прийнятий звіт, щоб мапа читала одну таблицю. Для споживачів віддається як GeoJSON `Feature` (геометрія `Point` з `longitude, latitude`). `registry_synced_at` — штатний режим, синхронізація раз на 24 год.
 
 ### `consent_record` — згоди на обробку ПДн
-Цілі: `GEOLOCATION`, `PUSH_NOTIFICATIONS`, `CROWDSOURCE_REPORTING`. Записи не редагуються по суті: відкликання заповнює `revoked_at`, повторна згода — новий запис. Частковий унікальний індекс гарантує **не більше однієї активної згоди** на ціль. `policy_version` фіксує, на яку редакцію політики погодився користувач.
+Цілі: `ROUTE_GPS` (маршрут і пошук найближчого укриття), `REPORT_GEOFENCE` (перевірка присутності біля укриття), `SOS`. Стан згоди (`NOT_GRANTED`, `ACTIVE`, `REVOKED`, `EXPIRED`) обчислюється з дат запису. Записи не редагуються по суті: відкликання заповнює `revoked_at`, повторна згода — новий запис. Частковий унікальний індекс гарантує **не більше однієї активної згоди** на ціль. `policy_version` фіксує, на яку редакцію політики погодився користувач.
 
 ### `status_report` — звіти про статус
 Офіційні (комендант) і краудсорс (громадянин). Зберігаються **всі** звіти, зокрема відхилені — для аналізу якості даних. Рядкове значення `rejection_code` повертається клієнту в тілі відповіді `422`.
 
 ### `audit_log` — незмінний журнал аудиту
-Кожна значуща дія, включно з кожною відмовою `403` (`outcome = DENIED`). IP зберігається лише як хеш. `id`, `prev_hash`, `hash` присвоює тригер.
+Кожна значуща дія, включно з кожною відмовою `401` і `403` (`outcome = DENIED`). IP зберігається лише як HMAC-SHA-256. Довідники ролей і класів для цієї таблиці перевіряються лише для нових записів: історію, записану до міграції 0002, не переписано. `id`, `prev_hash`, `hash` присвоює тригер.
 
 ## Гарантії на рівні БД
 
@@ -134,12 +141,13 @@ erDiagram
 
 | Таблиця | Рівень | Обґрунтування |
 |---|---|---|
-| `shelter` | PUBLIC | Відкритий реєстр, потрібен усім для безпеки |
-| `role` | INTERNAL | Службова довідкова інформація |
-| `app_user` | CONFIDENTIAL | ПДн: email, телефон, ім'я |
-| `consent_record` | CONFIDENTIAL | Пов'язана з особою юридично значуща інформація |
-| `status_report` | CONFIDENTIAL | Містить геопозицію особи на момент звіту |
-| `audit_log` | RESTRICTED | Безпекові події, доступ лише `AUDITOR` |
+| `shelter` | L1 PUBLIC | Відкритий реєстр, потрібен усім для безпеки |
+| `shelter.commander_*` | L3 CONFIDENTIAL | Службові контакти комендантів |
+| `role` | L2 INTERNAL | Службова довідкова інформація |
+| `app_user` | L3 CONFIDENTIAL | Облікові записи: email, телефон, ім'я |
+| `audit_log` | L3 CONFIDENTIAL | Безпекові події, читає лише `SECURITY_AUDITOR` |
+| `consent_record` | L4 SENSITIVE | Цифровий доказ згоди суб'єкта даних |
+| `status_report` | L4 SENSITIVE | Містить GPS особи на момент звіту |
 
 ## Індекси під основні запити
 

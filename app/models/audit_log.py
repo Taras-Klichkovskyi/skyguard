@@ -21,7 +21,7 @@ from app.models.mixins import str_enum
 
 
 class AuditLog(Base):
-    """Незмінний журнал аудиту. Клас даних: RESTRICTED (читає лише AUDITOR).
+    """Незмінний журнал аудиту. Клас даних: CONFIDENTIAL (L3), читає лише SECURITY_AUDITOR.
 
     Незмінність забезпечує БД (міграція 0001):
       * тригер забороняє UPDATE / DELETE / TRUNCATE;

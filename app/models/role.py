@@ -7,7 +7,7 @@ from app.models.mixins import str_enum
 
 
 class Role(Base):
-    """Роль RBAC. 6 записів засіваються міграцією; змінює лише ADMIN."""
+    """Роль RBAC. 6 записів засіваються міграціями 0001–0002 (перелік — політика SG-2)."""
 
     __tablename__ = "role"
 

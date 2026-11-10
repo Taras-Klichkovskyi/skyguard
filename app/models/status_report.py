@@ -30,7 +30,7 @@ from app.models.mixins import UUIDPkMixin, str_enum
 class StatusReport(UUIDPkMixin, Base):
     """Звіт про статус укриття: офіційний (комендант) або краудсорс (громадянин).
 
-    Клас даних: CONFIDENTIAL — містить геопозицію автора на момент звіту.
+    Клас даних: SENSITIVE (L4) — містить геопозицію автора на момент звіту.
     Правила DQ-1 (≤100 м) і DQ-2 (≤30 хв) перевіряються в API (SG-21),
     а CHECK-обмеження нижче — страховка на рівні БД: ACCEPTED-звіт, що їх
     порушує, не може бути збережений навіть у разі помилки в коді.
@@ -71,7 +71,7 @@ class StatusReport(UUIDPkMixin, Base):
 
     classification: Mapped[DataClassification] = mapped_column(
         str_enum(DataClassification, "data_classification"),
-        server_default=DataClassification.CONFIDENTIAL.value,
+        server_default=DataClassification.SENSITIVE.value,
     )
 
     shelter: Mapped["Shelter"] = relationship()  # noqa: F821

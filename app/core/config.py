@@ -1,6 +1,9 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEV_JWT_SECRET = "dev-only-secret-change-me-before-any-real-deployment"
 
 
 class Settings(BaseSettings):
@@ -17,9 +20,33 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     database_url: str | None = None
 
+    # Автентифікація (NFR-B2): короткий access-токен і довший refresh
+    jwt_secret: str = DEV_JWT_SECRET
+    jwt_algorithm: str = "HS256"
+    access_token_ttl_min: int = 15
+    refresh_token_ttl_days: int = 7
+
+    # Версія тексту політики, на яку погоджується користувач
+    consent_policy_version: str = "1.0"
+
+    # Звідки дозволено звертатися браузерному клієнту (через кому)
+    cors_origins: str = (
+        "http://localhost:5500,http://127.0.0.1:5500,http://localhost:5173,http://localhost:8080"
+    )
+
     # Правила якості даних (SG-2)
     dq_max_distance_m: int = 100  # DQ-1
     dq_max_age_min: int = 30  # DQ-2
+
+    @model_validator(mode="after")
+    def _no_dev_secret_outside_dev(self) -> "Settings":
+        if self.app_env not in ("dev", "test") and self.jwt_secret == DEV_JWT_SECRET:
+            raise ValueError("JWT_SECRET має бути заданий явно, якщо APP_ENV не dev/test")
+        return self
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def sqlalchemy_url(self) -> str:
