@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SkyGuard — Інформаційна система керованого обміну геоданими цивільного захисту</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- AIR RAID ALERT BANNER (Active during alarm) -->
+  <div class="alert-banner" id="alertBanner">
+    <div class="alert-content">
+      <span class="alert-pulse-icon">🚨</span>
+      <div class="alert-text-block">
+        <b>УВАГА! ПОВІТРЯНА ТРИВОГА У ЛЬВІВСЬКІЙ ОБЛАСТІ!</b>
+        <span class="alert-sub">Негайно прямуйте до найближчого безпечного укриття. Карта автоматично показує найкоротший маршрут.</span>
+      </div>
+    </div>
+    <button class="btn-alert-dismiss" id="btnDismissAlert">✕ Закрити сповіщення</button>
+  </div>
+
+  <!-- APP HEADER -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo">🛡️</div>
+      <div class="brand-text">
+        <h1>SkyGuard <span class="badge-tag">SG-9 MVP</span></h1>
+        <div class="tagline">Data Governance by Design · Львів</div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <button class="btn-alarm-trigger" id="btnAlarmTrigger" title="Симуляція надходження сигналу від системи оповіщення ДСНС">
+        <span class="siren-icon">🚨</span>
+        <span id="alarmBtnText">Симуляція тривоги</span>
+      </button>
+
+      <div class="consent-indicator granted" id="consentBtn" title="Керування згодою на обробку GPS-даних (ст. 11 ЗУ)">
+        <span class="status-dot"></span>
+        <span id="consentStatusText">Згода на геодані: Активна (L2)</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="role-selector-wrap">
+        <label for="roleSelector">Роль:</label>
+        <select id="roleSelector" class="role-select">
+          <option value="CITIZEN">👤 Громадянин (Citizen)</option>
+          <option value="VOLUNTEER">🦺 Волонтер (Verified Volunteer)</option>
+          <option value="MANAGER">🏢 Комендант (Shelter Manager)</option>
+          <option value="OPERATOR">🚒 Оператор ДСНС (DSNS Operator)</option>
+          <option value="AUDITOR">🛡️ Аудитор безпеки (Security Auditor)</option>
+          <option value="ANONYMOUS">🌐 Анонімний гість (Anonymous)</option>
+        </select>
+      </div>
+
+      <button id="openAuditBtn" class="btn-audit-trigger" title="Перегляд незмінного криптографічного журналу (SG-11)">
+        <span>📜</span>
+        <span>Аудит SHA-256</span>
+      </button>
+
+      <button id="btnExportGeoJson" class="btn-export-trigger" title="Експорт відкритого реєстру GeoJSON (RFC 7946 L1 PUBLIC)">
+        <span>📥</span>
+        <span>GeoJSON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="app-main">
+    <!-- LEAFLET MAP -->
+    <div id="map"></div>
+
+    <!-- FLOATING GPS BUTTON ON MAP -->
+    <button class="btn-locate-me" id="btnLocateMe" title="Визначити мою точну GPS-позицію через браузер">
+      <span>🎯</span>
+    </button>
+
+    <!-- FLOATING FILTER & SEARCH PANEL -->
+    <div class="floating-filters">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Пошук за назвою або адресою Львова...">
+      </div>
+
+      <div class="filter-chips">
+        <button class="chip active" data-status="ALL">Всі укриття (10)</button>
+        <button class="chip" data-status="OPEN">🟢 Відчинені</button>
+        <button class="chip" data-status="LIMITED">🟡 Обмежені</button>
+        <button class="chip" data-status="CLOSED">🔴 Зачинені</button>
+      </div>
+
+      <div class="feature-toggles">
+        <button class="toggle-chip" data-feature="wheelchair">♿ Пандус / Доступність</button>
+        <button class="toggle-chip" data-feature="generator">⚡ Генератор</button>
+        <button class="toggle-chip" data-feature="starlink">🛰️ Starlink</button>
+        <button class="toggle-chip" data-feature="water">💧 Питна вода</button>
+      </div>
+    </div>
+
+    <!-- BOTTOM STATS WIDGET -->
+    <div class="map-stats-widget">
+      <div class="stat-item">
+        <span>📍 Укриттів:</span>
+        <span class="stat-val" id="statsTotal">10</span>
+      </div>
+      <div class="stat-item">
+        <span style="color: #34d399;">● Доступно:</span>
+        <span class="stat-val" id="statsOpen">6</span>
+      </div>
+      <div class="stat-item">
+        <span>👥 Місткість:</span>
+        <span class="stat-val" id="statsCapacity">6,020</span>
+      </div>
+      <div class="stat-item">
+        <span>🔒 Режим:</span>
+        <span class="stat-val" style="color: #60a5fa;" id="statsMode">Штатний (L1/L2)</span>
+      </div>
+    </div>
+
+    <!-- SLIDE-OVER SHELTER DETAILS SIDEBAR -->
+    <aside class="details-sidebar" id="detailsSidebar">
+      <div class="sidebar-header">
+        <div>
+          <span class="status-badge badge-open" id="detailStatusBadge">Відчинено</span>
+          <h2 class="shelter-title" id="detailTitle">Назва укриття</h2>
+          <div class="shelter-address" id="detailAddress">📍 Адреса</div>
+          <div class="distance-tag" id="detailDistance">🎯 Розрахунок відстані...</div>
+        </div>
+        <button class="btn-close" id="closeSidebarBtn">&times;</button>
+      </div>
+
+      <div class="sidebar-content">
+        <!-- NAVIGATION ROUTE CARD -->
+        <div class="route-action-card" id="routeCard">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 700; color: #38bdf8; font-size: 0.9rem;" id="routeEstText">🚶 ~10 хв пішки (850 м)</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim);">Найкоротший безпечний піший маршрут</div>
+            </div>
+            <button class="btn-toggle-route" id="btnToggleRoute">Прокласти маршрут</button>
+          </div>
+        </div>
+
+        <!-- CAPACITY CARD -->
+        <div class="capacity-card">
+          <div class="capacity-header">
+            <span>Поточна заповненість:</span>
+            <span class="capacity-nums" id="detailOccupancyText">120 / 850</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="detailOccupancyBar" style="width: 14%;"></div>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 6px; text-align: right;" id="detailConfirmedTime">
+            Підтверджено: 15 хв тому
+          </div>
+        </div>
+
+        <!-- CROWDSOURCING CONSENSUS QUORUM CARD (DQ-3) -->
+        <div class="quorum-card" id="quorumCard">
+          <div class="quorum-header">
+            <span>Кворум підтверджень DQ-3:</span>
+            <span class="quorum-count" id="quorumCountText">1 / 3 свідків</span>
+          </div>
+          <div class="quorum-bar-bg">
+            <div class="quorum-bar-fill" id="quorumBarFill" style="width: 33%;"></div>
+          </div>
+          <div class="quorum-footer">
+            <span style="font-size: 0.72rem; color: var(--text-dim);" id="quorumStatusHint">Вікно валідації: 15 хв</span>
+            <button class="btn-quorum-add" id="btnAddWitnessBtn">+1 Підтвердити як свідок</button>
+          </div>
+        </div>
+
+        <!-- AMENITIES -->
+        <div class="info-section">
+          <div class="section-label">
+            <span>Обладнання та безпека</span>
+            <span class="classification-tag tag-l1">L1 PUBLIC</span>
+          </div>
+          <div class="amenities-grid" id="detailAmenitiesGrid"></div>
+        </div>
+
+        <!-- COMMANDER CONTACTS (L2 INTERNAL) -->
+        <div class="info-section">
+          <div class="section-label">
+            <span>Відповідальний комендант</span>
+            <span class="classification-tag tag-l2" id="commanderClassTag">L2 INTERNAL</span>
+          </div>
+          <div id="commanderDetailsContent">
+            <div style="font-weight: 600;" id="detailCommanderName">Ковальчук П. О.</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);" id="detailCommanderPhone">📞 +380 67 111 22 33</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim);" id="detailCommanderId">Службовий жетон: DSNS-LV-4412</div>
+          </div>
+        </div>
+
+        <!-- TELEMETRY / SMART LOCK (L3 CONFIDENTIAL) -->
+        <div class="info-section">
+          <div class="section-label">
+            <span>Телеметрія смарт-замка (IoT)</span>
+            <span class="classification-tag tag-l3">L3 CONFIDENTIAL</span>
+          </div>
+          <div id="telemetryDetailsContent">
+            <div style="font-size: 0.85rem; font-family: var(--font-mono);" id="detailLockStatus">Стан: UNLOCKED · Батарея: 94%</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);" id="detailLockId">ESP32-ID: LOCK-ESP32-998 (RSSI: -65 dBm)</div>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="sidebar-actions">
+          <button class="btn-action-primary" id="openReportBtn">
+            <span>📢</span>
+            <span>Повідомити про стан (Краудсорсинг)</span>
+          </button>
+          <button class="btn-action-telemetry" id="requestTelemetryBtn">
+            <span>🔐</span>
+            <span>Телеметрія замка (Тест 403 Forbidden)</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- MODAL 1: GEOLOCATION CONSENT DIALOG (Data Governance L2) -->
+  <div class="modal-backdrop" id="consentModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2>🛡️ Згода на обробку геоданих</h2>
+        <button class="btn-close" id="closeConsentModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Відповідно до <b>статті 11 Закону України «Про захист персональних даних»</b> та стандартів <b>Data Governance by Design</b>, системі SkyGuard потрібна ваша попередня згода для обробки поточної геолокації.</p>
+        
+        <div style="background: var(--bg-card); padding: 14px; border-radius: 10px; border: 1px solid var(--border-color);">
+          <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">🎯 Мета обробки:</div>
+          <div style="font-size: 0.82rem;">Автоматичний розрахунок відстані до найближчого укриття та верифікація краудсорсингових звітів за формулою Haversine (правило якості DQ-1: радіус ≤ 100 м).</div>
+        </div>
+
+        <p style="font-size: 0.8rem; color: var(--text-dim);">
+          🔒 <b>Принцип приватності:</b> Ваші координати не передаються третім особам, не зберігаються в первинному вигляді та анонімізуються в журналі аудиту до рівня мережі (/24). Ви можете відкликати згоду в будь-який момент.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btnDenyConsent">Відхилити (Режим L1 PUBLIC)</button>
+        <button class="btn-primary" id="btnGrantConsent">Надати згоду (Режим L2)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: CROWDSOURCING STATUS REPORT DIALOG (SG-21) -->
+  <div class="modal-backdrop" id="reportModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2>📢 Оновлення статусу укриття</h2>
+        <button class="btn-close" id="closeReportModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="background: var(--bg-card); padding: 12px; border-radius: 8px; font-size: 0.85rem;">
+          <div style="font-weight: 700; color: var(--text-main);" id="reportModalShelterName">Укриття</div>
+          <div style="color: var(--text-muted); font-size: 0.78rem;" id="reportModalDistanceCheck">Відстань від вас: обчислення...</div>
+        </div>
+
+        <div>
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-dim); display: block; margin-bottom: 8px;">Оберіть актуальний стан:</label>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-card); padding: 10px; border-radius: 8px; cursor: pointer;">
+              <input type="radio" name="reportStatus" value="OPEN" checked>
+              <span>🟢 <b>Відчинено</b> (є вільні місця, двері відчинені)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-card); padding: 10px; border-radius: 8px; cursor: pointer;">
+              <input type="radio" name="reportStatus" value="LIMITED">
+              <span>🟡 <b>Обмежено</b> (місткість вичерпується або обмежений доступ)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-card); padding: 10px; border-radius: 8px; cursor: pointer;">
+              <input type="radio" name="reportStatus" value="CLOSED">
+              <span>🔴 <b>Зачинено / Непридатне</b> (замок зачинено, аварія)</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="dqWarningBox" style="display: none; background: #451a03; border-left: 3px solid #f59e0b; padding: 10px; border-radius: 6px; font-size: 0.78rem; color: #fde68a;">
+          ⚠️ <b>Увага (Правило якості DQ-1):</b> Ваша дистанція до об'єкта становить понад 100 м. Відповідно до політики Data Governance, звіт буде відхилено сервером із кодом HTTP 422 для захисту від фейкових повідомлень.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btnCancelReport">Скасувати</button>
+        <button class="btn-primary" id="btnSubmitReport">Надіслати підтвердження</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: 403 FORBIDDEN SECURITY INCIDENT DIALOG (Negative Test / UC-03) -->
+  <div class="modal-backdrop" id="forbiddenModal">
+    <div class="modal-dialog dialog-forbidden">
+      <div class="modal-header">
+        <h2>🚫 403 Forbidden</h2>
+        <span class="forbidden-code-badge">HTTP 403</span>
+      </div>
+      <div class="modal-body">
+        <p><b style="color: #f87171;">Відмовлено в доступі за політикою Data Governance (RBAC)!</b></p>
+        <p>Ваша поточна роль (<b id="forbiddenCurrentRole">Citizen</b>) не володіє достатнім рівнем довіри для доступу до ресурсів класу <b>CONFIDENTIAL (L3)</b> або <b>SENSITIVE (L4)</b>.</p>
+
+        <div class="incident-box">
+          <div><b>ІНЦИДЕНТ БЕЗПЕКИ ЗАРЕЄСТРОВАНО:</b></div>
+          <div style="margin-top: 4px;">audit_entry_id: <span id="forbiddenAuditId">ae-9f2d-88b14a9c</span></div>
+          <div>timestamp: <span id="forbiddenTimestamp">2026-11-10T15:30:12Z</span></div>
+          <div>action: READ_CONFIDENTIAL_TELEMETRY</div>
+          <div>policy: RBAC_RESTRICTED_ACCESS</div>
+        </div>
+
+        <p style="font-size: 0.78rem; color: var(--text-dim);">
+          Факт несанкціонованої спроби доступу зафіксовано в незмінному криптографічному журналі аудиту SHA-256 і передано офіцеру безпеки системи.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btnCloseForbiddenBtn">Зрозуміло (Зафіксовано в аудиті)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: AUDIT TRAIL DASHBOARD CONSOLE (SG-11 / UC-04) -->
+  <div class="modal-backdrop" id="auditModal">
+    <div class="modal-dialog dialog-audit">
+      <div class="modal-header">
+        <h2>📜 Журнал аудиту SkyGuard (Audit Trail SHA-256)</h2>
+        <button class="btn-close" id="closeAuditModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="audit-status-strip" id="auditStatusStrip">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>🔒</span>
+            <span id="auditStatusLabel">✓ Ланцюг SHA-256: ЦІЛІСНИЙ (7 блоків перевірено)</span>
+          </div>
+          <div style="font-size: 0.75rem; color: #a7f3d0; font-family: var(--font-mono);">
+            Append-Only · Triggers Active
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            Фільтр: 
+            <button class="chip active" id="auditFilterAll">Всі</button>
+            <button class="chip" id="auditFilter200">200 OK</button>
+            <button class="chip" id="auditFilter403">403 Denied</button>
+            <button class="chip" id="auditFilter422">422 DQ Fail</button>
+          </div>
+          <button class="btn-secondary" id="btnSimulateTamper" style="font-size: 0.75rem; border-color: #ef4444; color: #f87171;">
+            ⚠️ Симулювати атаку підміни
+          </button>
+        </div>
+
+        <div class="audit-table-wrap">
+          <table class="audit-table" id="auditTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Час (UTC)</th>
+                <th>Актор / Роль</th>
+                <th>Дія</th>
+                <th>Клас</th>
+                <th>Статус</th>
+                <th>SHA-256 Хеш</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btnExportAuditJson">📥 Експорт audit_export.json</button>
+        <button class="btn-primary" id="btnCloseAuditDialog">Закрити консоль</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Leaflet JavaScript -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
