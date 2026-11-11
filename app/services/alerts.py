@@ -66,13 +66,17 @@ class AlertsService:
 alerts_service = AlertsService()
 
 
-def _fetch_from_alerts_in_ua_sync(token: str, location_uid: int, location_title: str) -> tuple[bool, str | None]:
+def _fetch_from_alerts_in_ua_sync(
+    token: str, location_uid: int, location_title: str
+) -> tuple[bool, str | None]:
     """Синхронний запит до API alerts.in.ua (виконується в пулі потоків)."""
     req = urllib.request.Request(
         ALERTS_IN_UA_API_URL,
         headers={
             "Authorization": f"Bearer {token}",
-            "User-Agent": "SkyGuard-Lviv-Emergency/1.0 (+https://github.com/Taras-Klichkovskyi/skyguard)",
+            "User-Agent": (
+                "SkyGuard-Lviv-Emergency/1.0 (+https://github.com/Taras-Klichkovskyi/skyguard)"
+            ),
             "Accept": "application/json",
         },
     )

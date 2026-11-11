@@ -9,10 +9,10 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, DbSession, authorize
+from app.api.deps import DbSession, authorize
 from app.core.policy import AUDIT_TRAIL_READ
 from app.models import AuditLog, User
 from app.models.enums import AuditOutcome, DataClassification
@@ -54,9 +54,15 @@ def read_audit_trail(
     request: Request,
     db: DbSession,
     user: Annotated[User, Depends(authorize(AUDIT_TRAIL_READ))],
-    after_sequence: Annotated[int, Query(ge=0, description="Початковий ідентифікатор запису")] = 0,
-    limit: Annotated[int, Query(ge=1, le=200, description="Кількість записів у зрізі")] = 100,
-    through_sequence: Annotated[int | None, Query(ge=0, description="Кінцевий ідентифікатор запису")] = None,
+    after_sequence: Annotated[
+        int, Query(ge=0, description="Початковий ідентифікатор запису")
+    ] = 0,
+    limit: Annotated[
+        int, Query(ge=1, le=200, description="Кількість записів у зрізі")
+    ] = 100,
+    through_sequence: Annotated[
+        int | None, Query(ge=0, description="Кінцевий ідентифікатор запису")
+    ] = None,
 ) -> dict[str, Any]:
     """Читання незмінного журналу аудиту (лише для Security Auditor).
 
@@ -115,7 +121,11 @@ def read_audit_trail(
             entity_id=r.entity_id,
             outcome=r.outcome.value if hasattr(r.outcome, "value") else str(r.outcome),
             http_status=r.http_status,
-            data_classification=r.data_classification.value if hasattr(r.data_classification, "value") and r.data_classification else None,
+            data_classification=(
+                r.data_classification.value
+                if hasattr(r.data_classification, "value") and r.data_classification
+                else None
+            ),
             ip_hash=r.ip_hash,
             details=r.details,
             prev_hash=r.prev_hash,
