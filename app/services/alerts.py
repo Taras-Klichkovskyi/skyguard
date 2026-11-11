@@ -44,7 +44,7 @@ class AlertsService:
 
     async def simulate_alert(self, active: bool) -> dict[str, Any]:
         """Симуляція зміни статусу (для тестування без живого токена)."""
-        changed = (self.is_active != active)
+        changed = self.is_active != active
         self.is_active = active
         self.started_at = datetime.now(UTC).isoformat().replace("+00:00", "Z") if active else None
         self.last_checked_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
@@ -88,8 +88,8 @@ def _fetch_from_alerts_in_ua_sync(
         # Перевірка за location_uid або назвою регіону
         uid = alert.get("location_uid")
         title = alert.get("location_title", "")
-        matches_uid = (uid == str(location_uid) or uid == location_uid)
-        matches_title = (location_title.lower() in title.lower())
+        matches_uid = uid == str(location_uid) or uid == location_uid
+        matches_title = location_title.lower() in title.lower()
 
         if (matches_uid or matches_title) and alert.get("finished_at") is None:
             started_at = alert.get("started_at")

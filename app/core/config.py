@@ -7,10 +7,13 @@ try:
     from pydantic_settings import BaseSettings, SettingsConfigDict
 except ImportError:
     from pydantic import BaseModel
+
     def SettingsConfigDict(**kwargs):
         return kwargs
+
     class BaseSettings(BaseModel):
         model_config = {}
+
         def __init__(self, **kwargs):
             vals = {}
             for k in self.__class__.model_fields:
@@ -19,6 +22,7 @@ except ImportError:
                     vals[k] = v
             vals.update(kwargs)
             super().__init__(**vals)
+
 
 DEV_JWT_SECRET = "dev-only-secret-change-me-before-any-real-deployment"
 
@@ -85,9 +89,9 @@ class Settings(BaseSettings):
         if self.database_url:
             url = self.database_url
             if url.startswith("postgres://"):
-                url = "postgresql+psycopg://" + url[len("postgres://"):]
+                url = "postgresql+psycopg://" + url[len("postgres://") :]
             elif url.startswith("postgresql://") and not url.startswith("postgresql+psycopg://"):
-                url = "postgresql+psycopg://" + url[len("postgresql://"):]
+                url = "postgresql+psycopg://" + url[len("postgresql://") :]
             return url
         return (
             f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"

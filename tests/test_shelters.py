@@ -88,8 +88,10 @@ def test_status_freshness_flag_dq2(client, make_shelter):
     fresh = make_shelter(status_updated_at=now - timedelta(minutes=5))
     stale = make_shelter(status_updated_at=now - timedelta(minutes=45))
     never = make_shelter()
+
     def flag(s):
         return client.get(f"{URL}/{s.id}").json()["properties"]["status_is_fresh"]
+
     assert flag(fresh) is True
     assert flag(stale) is False
     assert flag(never) is False

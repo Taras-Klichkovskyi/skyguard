@@ -54,12 +54,8 @@ def read_audit_trail(
     request: Request,
     db: DbSession,
     user: Annotated[User, Depends(authorize(AUDIT_TRAIL_READ))],
-    after_sequence: Annotated[
-        int, Query(ge=0, description="Початковий ідентифікатор запису")
-    ] = 0,
-    limit: Annotated[
-        int, Query(ge=1, le=200, description="Кількість записів у зрізі")
-    ] = 100,
+    after_sequence: Annotated[int, Query(ge=0, description="Початковий ідентифікатор запису")] = 0,
+    limit: Annotated[int, Query(ge=1, le=200, description="Кількість записів у зрізі")] = 100,
     through_sequence: Annotated[
         int | None, Query(ge=0, description="Кінцевий ідентифікатор запису")
     ] = None,
