@@ -188,6 +188,12 @@ SkyGuard.bindEvents = function () {
     btnDsnsForceClose.addEventListener("click", () => SkyGuard.UI.forceDsnsStatus("CLOSED"));
   }
 
+  // 4b. Smart Geofence Presence Check-in Toggle
+  const btnTogglePresence = document.getElementById("btnTogglePresence");
+  if (btnTogglePresence) {
+    btnTogglePresence.addEventListener("click", () => SkyGuard.UI.toggleGeofencePresence());
+  }
+
   // 5. Geolocation Pill in Header (Click transmits GPS location immediately)
   const consentBtn = document.getElementById("consentBtn");
   const closeConsentBtn = document.getElementById("closeConsentModalBtn");

@@ -173,6 +173,31 @@
           </div>
         </div>
 
+        <!-- SMART GEOFENCE PRESENCE CARD (Автофіксація заповненості за GPS) -->
+        <div class="geofence-presence-card" id="geofencePresenceCard">
+          <div class="presence-header">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="presence-radar-icon">📡</span>
+              <span style="font-weight: 700; font-size: 0.8rem; color: #38bdf8;">Автофіксація заповненості (GPS)</span>
+            </div>
+            <span class="classification-tag tag-l2" style="font-size: 0.65rem;">Privacy by Design</span>
+          </div>
+          <div class="presence-body" id="presenceBody">
+            <div class="presence-status-row">
+              <span id="presenceStatusIcon">🚶‍♂️</span>
+              <span id="presenceStatusText" style="font-size: 0.78rem;">Розрахунок геозони присутності...</span>
+            </div>
+            <div class="presence-actions-row">
+              <button class="btn-presence-toggle" id="btnTogglePresence" title="Автоматична фіксація входу/виходу громадянина">
+                📍 Зімітувати перебування всередині (≤ 30 м)
+              </button>
+            </div>
+          </div>
+          <div class="presence-footnote">
+            🔒 Без збереження ПДн (ст. 11 ЗУ): підрахунок ведеться анонімно за фактом перетину геозони укриття без персонального стеження.
+          </div>
+        </div>
+
         <!-- CROWDSOURCING CONSENSUS QUORUM CARD (DQ-3) -->
         <div class="quorum-card" id="quorumCard">
           <div class="quorum-header">

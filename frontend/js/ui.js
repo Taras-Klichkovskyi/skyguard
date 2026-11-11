@@ -142,6 +142,9 @@ SkyGuard.UI = {
     // Quorum Consensus Card (DQ-3)
     SkyGuard.Crowdsource.updateQuorumDisplay(shelter.id);
 
+    // Smart Geofence Presence Card (Anonymous GPS Check-in)
+    this.updateGeofencePresence(shelter);
+
     // Amenities Grid
     const amenitiesGrid = document.getElementById("detailAmenitiesGrid");
     if (amenitiesGrid) {
@@ -328,6 +331,88 @@ SkyGuard.UI = {
    * Closes details sidebar
    */
   
+  /**
+   * Updates Smart Geofence Presence Card (Anonymous GPS Check-in)
+   */
+  updateGeofencePresence(shelter) {
+    const card = document.getElementById("geofencePresenceCard");
+    const statusIcon = document.getElementById("presenceStatusIcon");
+    const statusText = document.getElementById("presenceStatusText");
+    const toggleBtn = document.getElementById("btnTogglePresence");
+    if (!card || !statusText || !toggleBtn) return;
+
+    const isCheckedIn = (SkyGuard.State.checkedInShelterId === shelter.id);
+
+    // Calculate real distance
+    let dist = 1000;
+    if (SkyGuard.State.consent && SkyGuard.State.userLocation) {
+      dist = SkyGuard.Geo.calculateHaversineDistance(
+        SkyGuard.State.userLocation.lat,
+        SkyGuard.State.userLocation.lon,
+        shelter.lat,
+        shelter.lon
+      );
+    }
+
+    if (isCheckedIn) {
+      if (statusIcon) statusIcon.textContent = "🟢";
+      statusText.innerHTML = `<b>Ви всередині укриття:</b> GPS-периметр (≤ 30 м) підтверджено. Вас автоматично зараховано до заповненості (+1).`;
+      statusText.style.color = "#34d399";
+      toggleBtn.innerHTML = "🚪 Зімітувати вихід з укриття (-1 місце)";
+      toggleBtn.className = "btn-presence-toggle checked-in";
+    } else if (dist <= 50) {
+      if (statusIcon) statusIcon.textContent = "🟡";
+      statusText.innerHTML = `<b>Ви біля входу (${SkyGuard.Geo.formatDistance(dist)}):</b> Перетніть поріг для авточекіну.`;
+      statusText.style.color = "#fbbf24";
+      toggleBtn.innerHTML = "📍 Підтвердити перебування всередині (+1)";
+      toggleBtn.className = "btn-presence-toggle near";
+    } else {
+      if (statusIcon) statusIcon.textContent = "🚶‍♂️";
+      statusText.innerHTML = `<b>Ви на дистанції ${SkyGuard.Geo.formatDistance(dist)}:</b> Авточекін активується автоматично при наближенні ≤ 30 м.`;
+      statusText.style.color = "var(--text-muted)";
+      toggleBtn.innerHTML = "📍 Зімітувати перебування всередині (≤ 30 м)";
+      toggleBtn.className = "btn-presence-toggle";
+    }
+  },
+
+  /**
+   * Toggles Geofence Presence Check-in / Check-out
+   */
+  toggleGeofencePresence() {
+    const shelter = SkyGuard.State.getShelterById(SkyGuard.State.selectedShelterId);
+    if (!shelter) return;
+
+    if (SkyGuard.State.checkedInShelterId === shelter.id) {
+      // User is checking OUT
+      SkyGuard.State.checkedInShelterId = null;
+      shelter.current_occupancy = Math.max(0, shelter.current_occupancy - 1);
+      shelter.confirmed_at = "Щойно (GPS вихід)";
+      this.showToast(`🚪 Фіксація виходу: ви покинули укриття «${shelter.name}» (-1 місце)`, "info");
+      SkyGuard.Audit.logEvent("GEOFENCE_PRESENCE_CHECKOUT", `shelter/${shelter.id}`, "INTERNAL", 200);
+    } else {
+      // User is checking IN
+      if (SkyGuard.State.checkedInShelterId) {
+        const prev = SkyGuard.State.getShelterById(SkyGuard.State.checkedInShelterId);
+        if (prev) prev.current_occupancy = Math.max(0, prev.current_occupancy - 1);
+      }
+      SkyGuard.State.checkedInShelterId = shelter.id;
+      shelter.current_occupancy = Math.min(shelter.capacity, shelter.current_occupancy + 1);
+      shelter.confirmed_at = "Щойно (GPS чекін ≤ 30м)";
+      this.showToast(`📍 GPS-авточекін: вашу присутність зараховано (+1 людина до «${shelter.name}»)!`, "success");
+      SkyGuard.Audit.logEvent("GEOFENCE_PRESENCE_CHECKIN", `shelter/${shelter.id}`, "INTERNAL", 200);
+    }
+
+    // Broadcast live across tabs
+    SkyGuard.State.broadcastShelterUpdate(shelter.id, shelter.status, shelter.confirmed_at);
+    if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
+      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, shelter.status);
+    }
+
+    this.openShelterDetails(shelter.id);
+    this.updateStats();
+    SkyGuard.Map.renderShelters();
+  },
+
   /**
    * Initializes touch swipe-down gestures for mobile bottom sheet
    */

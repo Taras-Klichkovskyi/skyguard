@@ -42,6 +42,9 @@ SkyGuard.State = {
   // Broadcast channel for instant multi-tab sync (DSNS <-> Citizen)
   channel: null,
 
+  // Geofence Presence Check-in (current shelter user is physically inside)
+  checkedInShelterId: null,
+
   // Initialize state with default data and load any active overrides
   init() {
     this.shelters = JSON.parse(JSON.stringify(SkyGuard.Config.DEFAULT_SHELTERS));
