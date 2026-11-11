@@ -292,6 +292,14 @@ SkyGuard.UI = {
     shelter.current_occupancy = isNaN(newOccupancy) ? shelter.current_occupancy : Math.min(newOccupancy, shelter.capacity);
     shelter.confirmed_at = "Щойно (комендант)";
 
+    // 1. Instant sync across tabs
+    SkyGuard.State.broadcastShelterUpdate(shelter.id, newStatus, shelter.confirmed_at, shelter.current_occupancy);
+
+    // 2. Transmit to live backend API & WebSocket
+    if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
+      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, newStatus, shelter.current_occupancy);
+    }
+
     SkyGuard.Map.renderShelters();
     this.updateStats();
     this.openShelterDetails(shelter.id);
@@ -309,9 +317,12 @@ SkyGuard.UI = {
 
     shelter.status = newStatus;
     shelter.confirmed_at = "Щойно (ДСНС)";
+    if (newStatus === "CLOSED") {
+      shelter.current_occupancy = 0;
+    }
 
     // 1. Instant sync across tabs in same browser (DSNS tab -> Citizen tab)
-    SkyGuard.State.broadcastShelterUpdate(shelter.id, newStatus, shelter.confirmed_at);
+    SkyGuard.State.broadcastShelterUpdate(shelter.id, newStatus, shelter.confirmed_at, shelter.current_occupancy);
 
     // 2. Transmit to live backend API & WebSocket stream
     if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {

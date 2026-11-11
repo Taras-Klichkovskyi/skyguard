@@ -63,8 +63,8 @@
         <span id="consentStatusText">Геолокація активна</span>
       </button>
 
-      <!-- Audit Console Button (SG-11) -->
-      <button class="btn-audit-trigger" id="openAuditBtn" title="Консоль незмінного аудиту SHA-256 (SG-11)">
+      <!-- Audit Console Button (SG-11) - Only visible for AUDITOR role -->
+      <button class="btn-audit-trigger" id="openAuditBtn" style="display: none;" title="Консоль незмінного аудиту SHA-256 (SG-11)">
         <span>📜</span>
         <span class="audit-btn-text">Аудит SHA-256</span>
       </button>
@@ -421,9 +421,10 @@
             <button class="chip" id="auditFilter403">403 Denied</button>
             <button class="chip" id="auditFilter422">422 DQ Fail</button>
           </div>
-          <button class="btn-secondary" id="btnSimulateTamper" style="font-size: 0.75rem; border-color: #ef4444; color: #f87171;">
-            ⚠️ Симулювати атаку підміни
-          </button>
+          <span style="font-size: 0.72rem; color: #34d399; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; background: rgba(52, 211, 153, 0.1); padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(52, 211, 153, 0.3);">
+            <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399;"></span>
+            Live Режим аудиту (PostgreSQL SHA-256)
+          </span>
         </div>
 
         <div class="audit-table-wrap">

@@ -252,15 +252,15 @@ SkyGuard.Security = {
 
     this.updateModalActiveCard(roleDef.id);
 
-    // Highlight or pulse the Audit button if user is AUDITOR
+    // Audit button is ONLY visible for AUDITOR role
     const openAuditBtn = document.getElementById("openAuditBtn");
     if (openAuditBtn) {
       if (roleDef.id === "AUDITOR") {
+        openAuditBtn.style.display = "flex";
         openAuditBtn.style.borderColor = "#38bdf8";
         openAuditBtn.style.boxShadow = "0 0 12px rgba(56, 189, 248, 0.4)";
       } else {
-        openAuditBtn.style.borderColor = "";
-        openAuditBtn.style.boxShadow = "";
+        openAuditBtn.style.display = "none";
       }
     }
 

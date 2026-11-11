@@ -56,6 +56,9 @@ SkyGuard.State = {
           if (map[s.id]) {
             s.status = map[s.id].status;
             s.confirmed_at = map[s.id].confirmed_at;
+            if (typeof map[s.id].occupancy === "number") {
+              s.current_occupancy = map[s.id].occupancy;
+            }
           }
         });
       }
@@ -74,17 +77,20 @@ SkyGuard.State = {
         this.channel = new BroadcastChannel("skyguard_sync");
         this.channel.onmessage = (event) => {
           if (event.data && event.data.type === "shelter_updated") {
-            const { shelterId, status, confirmed_at } = event.data;
-            const s = this.getShelterById(shelterId);
+            const { shelterId, shelterName, status, confirmed_at, occupancy } = event.data;
+            const s = this.getShelterById(shelterId, shelterName);
             if (s) {
               s.status = status;
               if (confirmed_at) s.confirmed_at = confirmed_at;
+              if (typeof occupancy === "number") s.current_occupancy = occupancy;
               SkyGuard.Map.renderShelters();
               SkyGuard.UI.updateStats();
-              if (this.selectedShelterId === shelterId) {
-                SkyGuard.UI.openShelterDetails(shelterId);
+              if (this.selectedShelterId && 
+                  (String(this.selectedShelterId).toLowerCase() === String(s.id).toLowerCase() ||
+                   (shelterId && String(this.selectedShelterId).toLowerCase() === String(shelterId).toLowerCase()))) {
+                SkyGuard.UI.openShelterDetails(s.id);
               }
-              const statusName = status === "OPEN" ? "ВІДЧИНЕНО" : "ЗАЧИНЕНО";
+              const statusName = status === "OPEN" ? "ВІДЧИНЕНО" : (status === "CLOSED" ? "ЗАЧИНЕНО" : "ОБМЕЖЕНО");
               SkyGuard.UI.showToast(`🚨 Оновлення ДСНС: ${s.name} → ${statusName}!`, status === "OPEN" ? "success" : "warning");
             }
           }
@@ -98,11 +104,18 @@ SkyGuard.State = {
           const map = JSON.parse(e.newValue);
           let changed = false;
           Object.keys(map).forEach(id => {
-            const s = this.getShelterById(id);
-            if (s && s.status !== map[id].status) {
-              s.status = map[id].status;
-              s.confirmed_at = map[id].confirmed_at || s.confirmed_at;
-              changed = true;
+            const item = map[id];
+            const s = this.getShelterById(id, item.name);
+            if (s) {
+              if (s.status !== item.status) {
+                s.status = item.status;
+                changed = true;
+              }
+              if (typeof item.occupancy === "number" && s.current_occupancy !== item.occupancy) {
+                s.current_occupancy = item.occupancy;
+                changed = true;
+              }
+              if (item.confirmed_at) s.confirmed_at = item.confirmed_at;
             }
           });
           if (changed) {
@@ -121,30 +134,48 @@ SkyGuard.State = {
     try {
       const map = {};
       this.shelters.forEach(s => {
-        map[s.id] = { status: s.status, confirmed_at: s.confirmed_at };
+        map[s.id] = { 
+          status: s.status, 
+          confirmed_at: s.confirmed_at,
+          occupancy: s.current_occupancy,
+          name: s.name
+        };
       });
       localStorage.setItem("skyguard_shelter_statuses", JSON.stringify(map));
     } catch (e) {}
   },
 
-  broadcastShelterUpdate(shelterId, status, confirmed_at) {
+  broadcastShelterUpdate(shelterId, status, confirmed_at, occupancy = null) {
     this.persistShelters();
     if (this.channel) {
       try {
+        const s = this.getShelterById(shelterId);
+        const occ = (typeof occupancy === "number" ? occupancy : (s ? s.current_occupancy : null));
         this.channel.postMessage({
           type: "shelter_updated",
           shelterId,
+          shelterName: s ? s.name : null,
           status,
-          confirmed_at
+          confirmed_at,
+          occupancy: occ
         });
       } catch (e) {}
     }
   },
 
   // State mutators
-  getShelterById(id) {
-    if (!id) return null;
-    return this.shelters.find(s => s.id === id || String(s.id).toLowerCase() === String(id).toLowerCase());
+  getShelterById(id, fallbackName = null) {
+    if (!id && !fallbackName) return null;
+    let found = null;
+    if (id) {
+      const strId = String(id).toLowerCase();
+      found = this.shelters.find(s => s.id === id || String(s.id).toLowerCase() === strId);
+    }
+    if (!found && fallbackName) {
+      const strName = String(fallbackName).toLowerCase();
+      found = this.shelters.find(s => s.name && s.name.toLowerCase() === strName);
+    }
+    return found;
   },
 
   setRole(newRole) {

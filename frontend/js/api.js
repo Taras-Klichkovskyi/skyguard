@@ -126,22 +126,37 @@ SkyGuard.Api = {
           if (msg.type === "shelter.updated" && msg.shelter) {
             const f = msg.shelter;
             const updatedId = f.properties.id || f.id;
-            const existing = SkyGuard.State.getShelterById(updatedId);
+            const existing = SkyGuard.State.getShelterById(updatedId, f.properties?.name);
             if (existing) {
               const newStatus = (f.properties.status === "FULL" ? "LIMITED" : f.properties.status);
               existing.status = newStatus;
               if (typeof f.properties.occupancy === "number") {
                 existing.current_occupancy = f.properties.occupancy;
+              } else if (newStatus === "CLOSED") {
+                existing.current_occupancy = 0;
               }
               existing.confirmed_at = "Щойно (Live WebSocket)";
+              SkyGuard.State.persistShelters();
               SkyGuard.Map.renderShelters();
+              SkyGuard.UI.updateStats();
+
               if (SkyGuard.State.selectedShelterId && 
-                  String(SkyGuard.State.selectedShelterId).toLowerCase() === String(updatedId).toLowerCase()) {
-                SkyGuard.UI.openShelterDetails(updatedId);
+                  (String(SkyGuard.State.selectedShelterId).toLowerCase() === String(existing.id).toLowerCase() ||
+                   String(SkyGuard.State.selectedShelterId).toLowerCase() === String(updatedId).toLowerCase())) {
+                SkyGuard.UI.openShelterDetails(existing.id);
               }
+
               const label = newStatus === "OPEN" ? "ВІДЧИНЕНО" : (newStatus === "CLOSED" ? "ЗАЧИНЕНО" : "ОБМЕЖЕНО");
               SkyGuard.UI.showToast(`⚡ Live WebSocket: Статус «${existing.name}» змінено на ${label}!`, "info");
               SkyGuard.Audit.logEvent("WS_LIVE_SHELTER_SYNC", `shelter/${updatedId}`, "PUBLIC", 200);
+
+              // If Auditor console is open, sync audit trail in real time
+              if (SkyGuard.State.role === "AUDITOR") {
+                const modal = document.getElementById("auditModal");
+                if (modal && modal.classList.contains("active")) {
+                  SkyGuard.Audit.fetchLiveAuditTrail(true);
+                }
+              }
             }
           }
 

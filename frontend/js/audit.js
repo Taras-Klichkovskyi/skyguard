@@ -138,10 +138,38 @@ SkyGuard.Audit = {
     return entry;
   },
 
+  liveTimer: null,
+
+  /**
+   * Starts live real-time sync loop while audit console is open (2.5s)
+   */
+  startLiveSync() {
+    this.stopLiveSync();
+    this.fetchLiveAuditTrail(false);
+    this.liveTimer = setInterval(() => {
+      const modal = document.getElementById("auditModal");
+      if (modal && modal.classList.contains("active") && SkyGuard.State.role === "AUDITOR") {
+        this.fetchLiveAuditTrail(true);
+      } else {
+        this.stopLiveSync();
+      }
+    }, 2500);
+  },
+
+  /**
+   * Stops live sync loop
+   */
+  stopLiveSync() {
+    if (this.liveTimer) {
+      clearInterval(this.liveTimer);
+      this.liveTimer = null;
+    }
+  },
+
   /**
    * Fetches live audit log from backend API if user is authorized as Auditor (SG-11)
    */
-  async fetchLiveAuditTrail() {
+  async fetchLiveAuditTrail(silent = false) {
     let token = (SkyGuard.Security && SkyGuard.Security.token) || localStorage.getItem("skyguard_token");
     if (!token && SkyGuard.State.role === "AUDITOR") {
       await SkyGuard.Security.loginWithJwt("auditor@skyguard.demo", "skyguard-demo");
@@ -172,7 +200,9 @@ SkyGuard.Audit = {
             hash: e.hash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
           }));
           this.renderTable();
-          SkyGuard.UI.showToast(`✓ Журнал аудиту завантажено з сервера (${data.count} блоків SHA-256)`, "success");
+          if (!silent) {
+            SkyGuard.UI.showToast(`✓ Журнал аудиту завантажено з сервера (${data.count} блоків SHA-256)`, "success");
+          }
         }
       }
     } catch (e) {

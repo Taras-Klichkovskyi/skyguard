@@ -324,33 +324,34 @@ SkyGuard.bindEvents = function () {
     btnSubmitReport.addEventListener("click", () => SkyGuard.Crowdsource.submitReport());
   }
 
-  // 9. Audit Console Modal
+  // 9. Audit Console Modal (SG-11 - Auditor Only)
   const openAuditBtn = document.getElementById("openAuditBtn");
   const closeAuditModalBtn = document.getElementById("closeAuditModalBtn");
   const btnCloseAuditDialog = document.getElementById("btnCloseAuditDialog");
-  const btnSimulateTamper = document.getElementById("btnSimulateTamper");
   const btnExportAuditJson = document.getElementById("btnExportAuditJson");
 
+  // Initial visibility check: hidden for citizens, only visible for AUDITOR
   if (openAuditBtn) {
+    openAuditBtn.style.display = (SkyGuard.State.role === "AUDITOR" ? "flex" : "none");
     openAuditBtn.addEventListener("click", () => {
       if (toolsDropdown) toolsDropdown.classList.remove("show");
       SkyGuard.Audit.renderTable();
-      SkyGuard.Audit.fetchLiveAuditTrail();
+      SkyGuard.Audit.startLiveSync();
       document.getElementById("auditModal").classList.add("active");
     });
   }
+
   if (closeAuditModalBtn) {
     closeAuditModalBtn.addEventListener("click", () => {
+      SkyGuard.Audit.stopLiveSync();
       document.getElementById("auditModal").classList.remove("active");
     });
   }
   if (btnCloseAuditDialog) {
     btnCloseAuditDialog.addEventListener("click", () => {
+      SkyGuard.Audit.stopLiveSync();
       document.getElementById("auditModal").classList.remove("active");
     });
-  }
-  if (btnSimulateTamper) {
-    btnSimulateTamper.addEventListener("click", () => SkyGuard.Audit.toggleTamperSimulation());
   }
   if (btnExportAuditJson) {
     btnExportAuditJson.addEventListener("click", () => SkyGuard.Audit.exportJson());
