@@ -131,27 +131,38 @@ header.app-header {
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
-  background: rgba(16, 185, 129, 0.14);
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  color: #34d399;
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #94a3b8;
   transition: all 0.2s ease;
 }
 
-.geo-status-pill:hover {
-  background: rgba(16, 185, 129, 0.26);
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.45);
+.geo-status-pill:hover,
+.geo-status-pill.denied:hover {
+  background: #334155;
+  border-color: #38bdf8;
+  color: #f1f5f9;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
   transform: translateY(-1px);
 }
 
 .geo-status-pill.denied {
-  background: rgba(239, 68, 68, 0.14);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #f87171;
+  background: #1e293b;
+  border-color: #475569;
+  color: #94a3b8;
 }
 
-.geo-status-pill.denied:hover {
-  background: rgba(239, 68, 68, 0.26);
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.45);
+.geo-status-pill.granted {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.geo-status-pill.granted:hover {
+  background: rgba(16, 185, 129, 0.26);
+  border-color: #34d399;
+  color: #6ee7b7;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.45);
 }
 
 .geo-pulse-dot {

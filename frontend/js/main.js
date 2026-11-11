@@ -46,6 +46,20 @@ SkyGuard.init = async function () {
     console.debug("[SkyGuard] Backend offline, continuing in local mode.");
   }
 
+  // 7. Check Geolocation Consent state (Default: grey / disabled; ask permission on first entry)
+  const savedConsent = localStorage.getItem("skyguard_consent");
+  if (savedConsent === "granted") {
+    SkyGuard.Security.setConsent(true);
+  } else if (savedConsent === "denied") {
+    SkyGuard.Security.setConsent(false);
+  } else {
+    // Fresh visit: ask for permission right away!
+    SkyGuard.Security.setConsent(false);
+    setTimeout(() => {
+      SkyGuard.Security.openConsentModal();
+    }, 600);
+  }
+
   console.info("✓ SkyGuard Client initialized successfully.");
 };
 
@@ -213,12 +227,23 @@ SkyGuard.bindEvents = function () {
 
   if (consentBtn) {
     consentBtn.addEventListener("click", () => {
+      // Re-prompt GPS transmission (especially if previously denied or disabled)
       SkyGuard.Security.handleGeoButtonClick();
     });
   }
   if (closeConsentBtn) closeConsentBtn.addEventListener("click", () => SkyGuard.Security.closeConsentModal());
-  if (btnGrantConsent) btnGrantConsent.addEventListener("click", () => SkyGuard.Security.setConsent(true));
-  if (btnDenyConsent) btnDenyConsent.addEventListener("click", () => SkyGuard.Security.setConsent(false));
+  if (btnGrantConsent) {
+    btnGrantConsent.addEventListener("click", () => {
+      SkyGuard.Security.closeConsentModal();
+      SkyGuard.Security.handleGeoButtonClick();
+    });
+  }
+  if (btnDenyConsent) {
+    btnDenyConsent.addEventListener("click", () => {
+      SkyGuard.Security.setConsent(false);
+      SkyGuard.UI.showToast("🔒 Геолокацію залишено вимкненою. Ви можете увімкнути її кнопкою вгорі у будь-який момент", "info");
+    });
+  }
 
   // 4. Sidebar Controls
   const closeSidebarBtn = document.getElementById("closeSidebarBtn");

@@ -57,10 +57,10 @@
 
     <!-- RIGHT ACTIONS: GEOLOCATION & ROLE BADGE -->
     <div class="header-actions">
-      <!-- Geolocation & Consent Toggle Pill (Click transmits GPS location immediately) -->
-      <button class="geo-status-pill granted" id="consentBtn" title="Клікніть, щоб передати точні GPS-координати та оновити маршрут до найближчого укриття">
+      <!-- Geolocation & Consent Toggle Pill (Default: Grey / Disabled, Click transmits GPS) -->
+      <button class="geo-status-pill" id="consentBtn" title="Клікніть, щоб передати точні GPS-координати та знайти найближче укриття">
         <span class="geo-pulse-dot"></span>
-        <span id="consentStatusText">Геолокація активна</span>
+        <span id="consentStatusText">Геолокація вимкнена</span>
       </button>
 
       <!-- Audit Console Button (SG-11) - Only visible for AUDITOR role -->

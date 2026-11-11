@@ -11,7 +11,7 @@ SkyGuard.State = {
   role: "CITIZEN",
 
   // Data Governance consent level (true = L2 granted GPS & Crowdsource, false = L1 PUBLIC only)
-  consent: true,
+  consent: false,
 
   // User coordinates (defaults to Rynok Square until GPS locates)
   userLocation: { ...SkyGuard.Config.DEFAULT_USER_LOCATION },
@@ -62,7 +62,12 @@ SkyGuard.State = {
           }
         });
       }
-    } catch (e) {}
+
+      const savedConsent = localStorage.getItem("skyguard_consent");
+      this.consent = (savedConsent === "granted");
+    } catch (e) {
+      this.consent = false;
+    }
 
     this.shelters.forEach(s => {
       this.quorumCounts[s.id] = (s.status === "LIMITED" ? 2 : 1);
@@ -190,6 +195,9 @@ SkyGuard.State = {
 
   setConsent(granted) {
     this.consent = granted;
+    try {
+      localStorage.setItem("skyguard_consent", granted ? "granted" : "denied");
+    } catch (e) {}
   },
 
   setUserLocation(lat, lon, name = "Визначено через GPS") {
