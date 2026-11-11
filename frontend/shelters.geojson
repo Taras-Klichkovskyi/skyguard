@@ -1,0 +1,209 @@
+{
+  "type": "FeatureCollection",
+  "name": "SkyGuard_Lviv_Shelters",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-001",
+        "name": "Центральне укриття №1 (ТЦ «Форум Львів»)",
+        "address": "м. Львів, вул. Під Дубом, 7Б",
+        "district": "Галицький",
+        "capacity": 850,
+        "current_occupancy": 120,
+        "status": "OPEN",
+        "wheelchair_accessible": true,
+        "has_power_generator": true,
+        "has_starlink": true,
+        "potable_water": true,
+        "last_confirmed_at": "2026-11-10T15:20:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-998", "battery": "94%", "signal_rssi": -65, "state": "UNLOCKED" },
+        "commander": { "name": "Ковальчук П. О.", "phone": "+380671112233", "service_id": "DSNS-LV-4412" }
+      },
+      "geometry": { "type": "Point", "coordinates": [24.0225, 49.8510] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-002",
+        "name": "Сховище НУ «Львівська політехніка»",
+        "address": "м. Львів, вул. Степана Бандери, 12",
+        "district": "Франківський",
+        "capacity": 450,
+        "current_occupancy": 180,
+        "status": "OPEN",
+        "wheelchair_accessible": true,
+        "has_power_generator": true,
+        "has_starlink": true,
+        "potable_water": true,
+        "last_confirmed_at": "2026-11-10T15:10:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-332", "battery": "88%", "signal_rssi": -72, "state": "UNLOCKED" },
+        "commander": { "name": "Григоренко В. М.", "phone": "+380504445566", "service_id": "DSNS-LV-8801" }
+      },
+      "geometry": { "type": "Point", "coordinates": [24.0145, 49.8355] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-003",
+        "name": "Підземне укриття Львівської міської ради (Ратуша)",
+        "address": "м. Львів, пл. Ринок, 1",
+        "district": "Галицький",
+        "capacity": 250,
+        "current_occupancy": 65,
+        "status": "OPEN",
+        "wheelchair_accessible": false,
+        "has_power_generator": true,
+        "has_starlink": true,
+        "potable_water": true,
+        "last_confirmed_at": "2026-11-10T15:25:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-101", "battery": "99%", "signal_rssi": -55, "state": "UNLOCKED" },
+        "commander": { "name": "Садовий А. І.", "phone": "+380322975911", "service_id": "LMR-LV-0001" }
+      },
+      "geometry": { "type": "Point", "coordinates": [24.0315, 49.8419] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-004",
+        "name": "Сховище Палацу мистецтв / Бібліотека",
+        "address": "м. Львів, вул. Коперника, 17",
+        "district": "Галицький",
+        "capacity": 320,
+        "current_occupancy": 295,
+        "status": "LIMITED",
+        "wheelchair_accessible": true,
+        "has_power_generator": true,
+        "has_starlink": false,
+        "potable_water": true,
+        "last_confirmed_at": "2026-11-10T14:45:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-404", "battery": "75%", "signal_rssi": -80, "state": "UNLOCKED" },
+        "commander": { "name": "Возняк Т. С.", "phone": "+380672223344", "service_id": "DSNS-LV-5519" }
+      },
+      "geometry": { "type": "Point", "coordinates": [24.0255, 49.8385] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-005",
+        "name": "Укриття Ліцею №8",
+        "address": "м. Львів, вул. Підвальна, 2",
+        "district": "Галицький",
+        "capacity": 200,
+        "current_occupancy": 195,
+        "status": "LIMITED",
+        "wheelchair_accessible": false,
+        "has_power_generator": false,
+        "has_starlink": false,
+        "potable_water": true,
+        "last_confirmed_at": "2026-11-10T14:30:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-512", "battery": "62%", "signal_rssi": -85, "state": "UNLOCKED" },
+        "commander": { "name": "Данилюк Н. В.", "phone": "+380633334455", "service_id": "LMR-EDU-08" }
+      },
+      "geometry": { "type": "Point", "coordinates": [24.0358, 49.8425] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-006",
+        "name": "Сховище вокзалу «Львів-Головний»",
+        "address": "м. Львів, пл. Двірцева, 1",
+        "district": "Залізничний",
+        "capacity": 1200,
+        "current_occupancy": 310,
+        "status": "OPEN",
+        "wheelchair_accessible": true,
+        "has_power_generator": true,
+        "has_starlink": true,
+        "potable_water": true,
+        "last_confirmed_at": "2026-11-10T15:28:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-777", "battery": "98%", "signal_rssi": -60, "state": "UNLOCKED" },
+        "commander": { "name": "Бойко І. В.", "phone": "+380678889900", "service_id": "UZ-LV-01" }
+      },
+      "geometry": { "type": "Point", "coordinates": [23.9942, 49.8358] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-007",
+        "name": "Протирадіаційне сховище 8-ї міської лікарні",
+        "address": "м. Львів, вул. Навроцького, 23",
+        "district": "Сихівський",
+        "capacity": 500,
+        "current_occupancy": 80,
+        "status": "OPEN",
+        "wheelchair_accessible": true,
+        "has_power_generator": true,
+        "has_starlink": true,
+        "potable_water": true,
+        "last_confirmed_at": "2026-11-10T15:05:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-888", "battery": "95%", "signal_rssi": -68, "state": "UNLOCKED" },
+        "commander": { "name": "Федак В. О.", "phone": "+380509990011", "service_id": "DSNS-LV-8088" }
+      },
+      "geometry": { "type": "Point", "coordinates": [24.0535, 49.8085] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-008",
+        "name": "Сховище ЗОШ №90 (Сихів)",
+        "address": "м. Львів, вул. Антоненка-Давидовича, 8",
+        "district": "Сихівський",
+        "capacity": 350,
+        "current_occupancy": 0,
+        "status": "CLOSED",
+        "wheelchair_accessible": true,
+        "has_power_generator": false,
+        "has_starlink": false,
+        "potable_water": false,
+        "last_confirmed_at": "2026-11-10T11:00:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-901", "battery": "40%", "signal_rssi": -90, "state": "LOCKED" },
+        "commander": { "name": "Сиховська О. П.", "phone": "+380971234567", "service_id": "LMR-EDU-90" },
+        "note": "Тимчасово зачинено: ремонт системи вентиляції"
+      },
+      "geometry": { "type": "Point", "coordinates": [24.0620, 49.7925] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-009",
+        "name": "Підземний паркінг ТРЦ «Victoria Gardens»",
+        "address": "м. Львів, вул. Кульпарківська, 226А",
+        "district": "Франківський",
+        "capacity": 1500,
+        "current_occupancy": 420,
+        "status": "OPEN",
+        "wheelchair_accessible": true,
+        "has_power_generator": true,
+        "has_starlink": true,
+        "potable_water": true,
+        "last_confirmed_at": "2026-11-10T15:15:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-303", "battery": "92%", "signal_rssi": -63, "state": "UNLOCKED" },
+        "commander": { "name": "Кульпарківський Д. С.", "phone": "+380675556677", "service_id": "VG-SEC-01" }
+      },
+      "geometry": { "type": "Point", "coordinates": [23.9785, 49.8070] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SH-LVIV-010",
+        "name": "Сховище Шевченківського району (Замарстинів)",
+        "address": "м. Львів, вул. Гетьмана Мазепи, 1А",
+        "district": "Шевченківський",
+        "capacity": 400,
+        "current_occupancy": 0,
+        "status": "CLOSED",
+        "wheelchair_accessible": false,
+        "has_power_generator": false,
+        "has_starlink": false,
+        "potable_water": false,
+        "last_confirmed_at": "2026-11-10T09:30:00Z",
+        "lock_telemetry": { "smart_lock_id": "LOCK-ESP32-110", "battery": "35%", "signal_rssi": -92, "state": "LOCKED" },
+        "commander": { "name": "Шевченко М. В.", "phone": "+380679998877", "service_id": "DSNS-LV-1110" },
+        "note": "Аварійний стан: підтоплення ґрунтовими водами"
+      },
+      "geometry": { "type": "Point", "coordinates": [24.0320, 49.8710] }
+    }
+  ]
+}
