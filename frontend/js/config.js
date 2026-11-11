@@ -8,8 +8,8 @@ window.SkyGuard = window.SkyGuard || {};
 
 SkyGuard.Config = {
   // Backend API Integration Settings (FastAPI SG-10 / SG-21)
-  API_BASE_URL: "http://localhost:8000/api/v1",
-  API_TIMEOUT_MS: 3000,
+  API_BASE_URL: "https://skyguard-api-tcir.onrender.com/api/v1",
+  API_TIMEOUT_MS: 8000,
 
   // Map Initial Coordinates (Lviv City Center)
   MAP_CENTER: [49.8397, 24.0297],
