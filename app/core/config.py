@@ -81,7 +81,12 @@ class Settings(BaseSettings):
     @property
     def sqlalchemy_url(self) -> str:
         if self.database_url:
-            return self.database_url
+            url = self.database_url
+            if url.startswith("postgres://"):
+                url = "postgresql+psycopg://" + url[len("postgres://"):]
+            elif url.startswith("postgresql://") and not url.startswith("postgresql+psycopg://"):
+                url = "postgresql+psycopg://" + url[len("postgresql://"):]
+            return url
         return (
             f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
