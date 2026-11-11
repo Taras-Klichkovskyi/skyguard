@@ -50,8 +50,18 @@ SkyGuard.Crowdsource = {
       shelter.status = "OPEN";
       shelter.confirmed_at = "Щойно (кворум DQ-3 підтверджено)";
       SkyGuard.State.broadcastShelterUpdate(id, "OPEN", shelter.confirmed_at);
-      if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
-        SkyGuard.Api.sendShelterStatusUpdate(id, "OPEN");
+      if (SkyGuard.Api) {
+        if (["OPERATOR", "MANAGER"].includes(SkyGuard.State.role)) {
+          SkyGuard.Api.sendShelterStatusUpdate(id, "OPEN", shelter.current_occupancy);
+        } else {
+          const userLoc = SkyGuard.State.userLocation || { lat: shelter.lat, lon: shelter.lon };
+          SkyGuard.Api.submitStatusReport(id, {
+            status: "OPEN",
+            latitude: userLoc.lat,
+            longitude: userLoc.lon,
+            comment: "Кворум свідків DQ-3 досягнуто (3/3)"
+          });
+        }
       }
       SkyGuard.Map.renderShelters();
       SkyGuard.UI.openShelterDetails(id);
@@ -152,8 +162,18 @@ SkyGuard.Crowdsource = {
 
     // Broadcast across tabs in real-time
     SkyGuard.State.broadcastShelterUpdate(shelter.id, selectedStatus, shelter.confirmed_at);
-    if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
-      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, selectedStatus);
+    if (SkyGuard.Api) {
+      if (["OPERATOR", "MANAGER"].includes(SkyGuard.State.role)) {
+        SkyGuard.Api.sendShelterStatusUpdate(shelter.id, selectedStatus, shelter.current_occupancy);
+      } else {
+        const userLoc = SkyGuard.State.userLocation || { lat: shelter.lat, lon: shelter.lon };
+        SkyGuard.Api.submitStatusReport(shelter.id, {
+          status: (selectedStatus === "LIMITED" ? "FULL" : selectedStatus),
+          latitude: userLoc.lat,
+          longitude: userLoc.lon,
+          comment: "Краудсорс-звіт громадянина (DQ-1 підтверджено)"
+        });
+      }
     }
 
     SkyGuard.Audit.logEvent("CROWDSOURCE_STATUS_UPDATE", `shelter/${shelter.id}`, "PUBLIC", 200);

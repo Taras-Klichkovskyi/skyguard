@@ -142,7 +142,11 @@ SkyGuard.Audit = {
    * Fetches live audit log from backend API if user is authorized as Auditor (SG-11)
    */
   async fetchLiveAuditTrail() {
-    const token = localStorage.getItem("skyguard_token");
+    let token = (SkyGuard.Security && SkyGuard.Security.token) || localStorage.getItem("skyguard_token");
+    if (!token && SkyGuard.State.role === "AUDITOR") {
+      await SkyGuard.Security.loginWithJwt("auditor@skyguard.demo", "skyguard-demo");
+      token = (SkyGuard.Security && SkyGuard.Security.token) || localStorage.getItem("skyguard_token");
+    }
     if (!token) return;
 
     try {

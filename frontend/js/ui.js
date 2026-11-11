@@ -315,7 +315,7 @@ SkyGuard.UI = {
 
     // 2. Transmit to live backend API & WebSocket stream
     if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
-      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, newStatus);
+      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, newStatus, shelter.current_occupancy);
     }
 
     SkyGuard.Map.renderShelters();
@@ -405,7 +405,7 @@ SkyGuard.UI = {
     // Broadcast live across tabs
     SkyGuard.State.broadcastShelterUpdate(shelter.id, shelter.status, shelter.confirmed_at);
     if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
-      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, shelter.status);
+      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, shelter.status, shelter.current_occupancy);
     }
 
     this.openShelterDetails(shelter.id);

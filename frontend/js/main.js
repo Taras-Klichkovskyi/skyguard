@@ -23,6 +23,14 @@ SkyGuard.init = async function () {
   // 4. Setup Event Listeners
   SkyGuard.bindEvents();
 
+  // 4.1. Restore or acquire initial JWT token for API calls
+  const savedToken = localStorage.getItem("skyguard_token");
+  if (savedToken) {
+    SkyGuard.Security.token = savedToken;
+  } else {
+    SkyGuard.Security.loginWithJwt("citizen@skyguard.demo", "skyguard-demo").catch(() => {});
+  }
+
   // 5. Connect Live WebSocket (SG-21) in background
   SkyGuard.Api.initWebSocket();
 

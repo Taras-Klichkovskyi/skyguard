@@ -143,7 +143,8 @@ SkyGuard.State = {
 
   // State mutators
   getShelterById(id) {
-    return this.shelters.find(s => s.id === id);
+    if (!id) return null;
+    return this.shelters.find(s => s.id === id || String(s.id).toLowerCase() === String(id).toLowerCase());
   },
 
   setRole(newRole) {

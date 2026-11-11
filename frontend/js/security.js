@@ -7,6 +7,16 @@
 window.SkyGuard = window.SkyGuard || {};
 
 SkyGuard.Security = {
+  token: localStorage.getItem("skyguard_token") || null,
+
+  ROLE_CREDENTIALS: {
+    OPERATOR: { email: "dsns@skyguard.demo", password: "skyguard-demo" },
+    MANAGER: { email: "manager@skyguard.demo", password: "skyguard-demo" },
+    AUDITOR: { email: "auditor@skyguard.demo", password: "skyguard-demo" },
+    VOLUNTEER: { email: "volunteer@skyguard.demo", password: "skyguard-demo" },
+    CITIZEN: { email: "citizen@skyguard.demo", password: "skyguard-demo" }
+  },
+
   /**
    * Checks whether the current user has permission to perform action on resource
    */
@@ -174,9 +184,17 @@ SkyGuard.Security = {
   /**
    * Request role switch: if privileged, requires password verification
    */
-  requestRoleSwitch(targetRoleId) {
-    if (targetRoleId === "CITIZEN" || targetRoleId === "ANONYMOUS") {
+  async requestRoleSwitch(targetRoleId) {
+    if (targetRoleId === "ANONYMOUS") {
+      this.token = null;
+      localStorage.removeItem("skyguard_token");
+      localStorage.removeItem("skyguard_jwt_token");
       this.switchRole(targetRoleId);
+      return;
+    }
+
+    if (targetRoleId === "CITIZEN") {
+      await this.loginWithJwt("citizen@skyguard.demo", "skyguard-demo");
       return;
     }
 
@@ -198,12 +216,13 @@ SkyGuard.Security = {
     }
   },
 
-  confirmPendingRole(password) {
+  async confirmPendingRole(password) {
     if (!this.pendingRole) return;
     if (password === "skyguard-demo") {
       const roleToSet = this.pendingRole;
+      const creds = this.ROLE_CREDENTIALS[roleToSet] || { email: "citizen@skyguard.demo", password: "skyguard-demo" };
       this.cancelPendingRole();
-      this.switchRole(roleToSet);
+      await this.loginWithJwt(creds.email, password);
     } else {
       const err = document.getElementById("rolePassError");
       if (err) err.style.display = "block";
@@ -233,6 +252,18 @@ SkyGuard.Security = {
 
     this.updateModalActiveCard(roleDef.id);
 
+    // Highlight or pulse the Audit button if user is AUDITOR
+    const openAuditBtn = document.getElementById("openAuditBtn");
+    if (openAuditBtn) {
+      if (roleDef.id === "AUDITOR") {
+        openAuditBtn.style.borderColor = "#38bdf8";
+        openAuditBtn.style.boxShadow = "0 0 12px rgba(56, 189, 248, 0.4)";
+      } else {
+        openAuditBtn.style.borderColor = "";
+        openAuditBtn.style.boxShadow = "";
+      }
+    }
+
     // Toast and Audit Log
     SkyGuard.UI.showToast(`✓ Права доступу змінено: ${roleDef.label}`, "success");
     SkyGuard.Audit.logEvent("RBAC_ROLE_SWITCH", `user/session`, roleDef.clearance, 200);
@@ -242,21 +273,21 @@ SkyGuard.Security = {
       SkyGuard.UI.openShelterDetails(SkyGuard.State.selectedShelterId);
     }
 
-    // If switched to AUDITOR, automatically open the Audit Console
+    // If switched to AUDITOR, automatically open the Audit Console and fetch DB records
     if (roleDef.id === "AUDITOR") {
       setTimeout(() => {
         SkyGuard.Audit.renderTable();
         SkyGuard.Audit.fetchLiveAuditTrail();
         const modal = document.getElementById("auditModal");
         if (modal) modal.classList.add("active");
-      }, 300);
+      }, 200);
     }
 
     this.closeAuthModal();
   },
 
   /**
-   * JWT Authentication through API or simulated credential check
+   * JWT Authentication through API (FastAPI SG-10/SG-21)
    */
   async loginWithJwt(email, password) {
     if (!email || !password) {
@@ -271,25 +302,30 @@ SkyGuard.Security = {
     else if (email.startsWith("auditor")) targetRole = "AUDITOR";
     else if (email.startsWith("volunteer")) targetRole = "VOLUNTEER";
 
-    SkyGuard.UI.showToast(`🔐 Перевірка облікових даних через шлюз безпеки...`, "info");
+    SkyGuard.UI.showToast(`🔐 Отримання JWT Bearer токена для ${email}...`, "info");
 
     try {
-      // Try live backend if available
+      // Connect to live FastAPI backend with JSON LoginIn schema
       const resp = await fetch(`${SkyGuard.Config.API_BASE_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ username: email, password: password })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password: password.trim() })
       });
 
       if (resp.ok) {
         const data = await resp.json();
         if (data.access_token) {
+          this.token = data.access_token;
           localStorage.setItem("skyguard_token", data.access_token);
+          localStorage.setItem("skyguard_jwt_token", data.access_token);
+          console.info(`[SkyGuard Auth] Live JWT obtained from backend: role=${data.role}`);
         }
+      } else {
+        const errJson = await resp.json().catch(() => ({}));
+        console.warn("[SkyGuard Auth] Live login returned non-200:", resp.status, errJson);
       }
     } catch (e) {
-      // Backend offline: continue with simulated seed credentials
-      console.debug("[SkyGuard] API login fallback to local session:", e.message);
+      console.debug("[SkyGuard Auth] Live backend offline, fallback to simulated session:", e.message);
     }
 
     // Apply role and feedback

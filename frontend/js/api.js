@@ -60,19 +60,47 @@ SkyGuard.Api = {
   /**
    * Broadcasts official status change to backend API (SG-21)
    */
-  async sendShelterStatusUpdate(shelterId, status) {
+  async sendShelterStatusUpdate(shelterId, status, occupancy = null) {
     try {
-      const token = SkyGuard.Security ? SkyGuard.Security.token : localStorage.getItem("skyguard_jwt_token");
+      const token = (SkyGuard.Security && SkyGuard.Security.token) ||
+                    localStorage.getItem("skyguard_token") ||
+                    localStorage.getItem("skyguard_jwt_token");
+
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      await fetch(`${this.baseUrl}/shelters/${shelterId}/status`, {
+      // Backend schema expects "OPEN", "FULL", "CLOSED" (LIMITED is mapped to FULL)
+      const backendStatus = (status === "LIMITED" ? "FULL" : status);
+      const payload = { status: backendStatus };
+      if (typeof occupancy === "number" && !isNaN(occupancy)) {
+        payload.occupancy = occupancy;
+      }
+
+      const response = await fetch(`${this.baseUrl}/shelters/${shelterId}/status`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ status })
-      }).catch(() => {});
-    } catch (e) {}
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const resData = await response.json();
+        console.info(`[SkyGuard API] Status successfully updated on backend (200 OK): ${shelterId} → ${backendStatus}`, resData);
+        return { success: true, status: response.status, data: resData };
+      } else {
+        const errJson = await response.json().catch(() => ({ detail: "Unknown error" }));
+        console.warn(`[SkyGuard API] Backend rejected status update (${response.status}):`, errJson);
+        if (response.status === 401) {
+          SkyGuard.UI.showToast("⚠️ Потрібна авторизація ДСНС (пароль: skyguard-demo)", "warning");
+        }
+        return { success: false, status: response.status, error: errJson };
+      }
+    } catch (e) {
+      console.warn("[SkyGuard API] Network error during status update:", e.message);
+      return { success: false, error: e.message };
+    }
   },
+
+  wsActive: false,
 
   /**
    * Initializes live WebSocket connection for instant push updates (SG-21)
@@ -84,10 +112,13 @@ SkyGuard.Api = {
       const host = base.replace(/^https?:\/\//, "").replace(/\/api\/v1\/?$/, "");
       const wsUrl = `${wsProto}://${host}/ws/v1/shelters`;
       const ws = new WebSocket(wsUrl);
+
       ws.onopen = () => {
+        this.wsActive = true;
         console.info("[SkyGuard WS] Connected to live backend stream:", wsUrl);
         SkyGuard.UI.showToast("⚡ Підключено до Live WebSocket сервера", "success");
       };
+
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data);
@@ -97,14 +128,20 @@ SkyGuard.Api = {
             const updatedId = f.properties.id || f.id;
             const existing = SkyGuard.State.getShelterById(updatedId);
             if (existing) {
-              existing.status = (f.properties.status === "FULL" ? "LIMITED" : f.properties.status);
-              existing.current_occupancy = f.properties.occupancy || existing.current_occupancy;
-              existing.confirmed_at = "Щойно (Live WS)";
+              const newStatus = (f.properties.status === "FULL" ? "LIMITED" : f.properties.status);
+              existing.status = newStatus;
+              if (typeof f.properties.occupancy === "number") {
+                existing.current_occupancy = f.properties.occupancy;
+              }
+              existing.confirmed_at = "Щойно (Live WebSocket)";
               SkyGuard.Map.renderShelters();
-              if (SkyGuard.State.selectedShelterId === updatedId) {
+              if (SkyGuard.State.selectedShelterId && 
+                  String(SkyGuard.State.selectedShelterId).toLowerCase() === String(updatedId).toLowerCase()) {
                 SkyGuard.UI.openShelterDetails(updatedId);
               }
-              SkyGuard.UI.showToast(`⚡ Live WebSocket: Статус ${existing.name} оновлено на ${existing.status}!`, "info");
+              const label = newStatus === "OPEN" ? "ВІДЧИНЕНО" : (newStatus === "CLOSED" ? "ЗАЧИНЕНО" : "ОБМЕЖЕНО");
+              SkyGuard.UI.showToast(`⚡ Live WebSocket: Статус «${existing.name}» змінено на ${label}!`, "info");
+              SkyGuard.Audit.logEvent("WS_LIVE_SHELTER_SYNC", `shelter/${updatedId}`, "PUBLIC", 200);
             }
           }
 
@@ -121,8 +158,16 @@ SkyGuard.Api = {
           }
         } catch (err) {}
       };
+
       ws.onerror = () => {
+        this.wsActive = false;
         console.debug("[SkyGuard WS] Offline (fallback to local mock events)");
+      };
+
+      ws.onclose = () => {
+        this.wsActive = false;
+        console.debug("[SkyGuard WS] Live stream closed. Auto-reconnecting in 4s...");
+        setTimeout(() => this.initWebSocket(), 4000);
       };
     } catch (e) {}
   },
@@ -133,12 +178,19 @@ SkyGuard.Api = {
    */
   async submitStatusReport(shelterId, reportPayload) {
     try {
+      const token = (SkyGuard.Security && SkyGuard.Security.token) ||
+                    localStorage.getItem("skyguard_token") ||
+                    localStorage.getItem("skyguard_jwt_token");
+
+      const headers = {
+        "Content-Type": "application/json",
+        "X-User-Role": SkyGuard.State.role
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const response = await fetch(`${this.baseUrl}/shelters/${shelterId}/reports`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Role": SkyGuard.State.role
-        },
+        headers,
         body: JSON.stringify(reportPayload)
       });
 
