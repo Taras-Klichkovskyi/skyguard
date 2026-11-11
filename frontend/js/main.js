@@ -12,6 +12,7 @@ SkyGuard.init = async function () {
 
   // 1. Initialize State with 10 default Lviv shelters
   SkyGuard.State.init();
+  SkyGuard.Audit.init();
 
   // 2. Initialize Map & Markers immediately (instant render, zero delay!)
   SkyGuard.Map.init();

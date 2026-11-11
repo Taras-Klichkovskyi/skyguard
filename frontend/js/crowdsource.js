@@ -49,11 +49,16 @@ SkyGuard.Crowdsource = {
     if (current >= SkyGuard.Config.DQ_RULES.DQ3_CONSENSUS_QUORUM) {
       shelter.status = "OPEN";
       shelter.confirmed_at = "Щойно (кворум DQ-3 підтверджено)";
+      SkyGuard.State.broadcastShelterUpdate(id, "OPEN", shelter.confirmed_at);
+      if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
+        SkyGuard.Api.sendShelterStatusUpdate(id, "OPEN");
+      }
       SkyGuard.Map.renderShelters();
       SkyGuard.UI.openShelterDetails(id);
       SkyGuard.UI.showToast("🎉 Кворум DQ-3 досягнуто (3/3)! Укриття переведено в статус ВІДЧИНЕНО", "success");
       SkyGuard.Audit.logEvent("QUORUM_DQ3_CONSENSUS_REACHED", `shelter/${id}`, "PUBLIC", 200);
     } else {
+      SkyGuard.State.persistShelters();
       const remaining = SkyGuard.Config.DQ_RULES.DQ3_CONSENSUS_QUORUM - current;
       SkyGuard.UI.showToast(`👍 Додано свідка (${current}/3). До консенсусу залишилось: ${remaining}`, "info");
       SkyGuard.Audit.logEvent("CROWDSOURCE_WITNESS_SUBMITTED", `shelter/${id}`, "PUBLIC", 200);
@@ -143,6 +148,12 @@ SkyGuard.Crowdsource = {
       shelter.current_occupancy = Math.min(shelter.capacity, shelter.current_occupancy + 15);
     } else if (selectedStatus === "CLOSED") {
       shelter.current_occupancy = 0;
+    }
+
+    // Broadcast across tabs in real-time
+    SkyGuard.State.broadcastShelterUpdate(shelter.id, selectedStatus, shelter.confirmed_at);
+    if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
+      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, selectedStatus);
     }
 
     SkyGuard.Audit.logEvent("CROWDSOURCE_STATUS_UPDATE", `shelter/${shelter.id}`, "PUBLIC", 200);

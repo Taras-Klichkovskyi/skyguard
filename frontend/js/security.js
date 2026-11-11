@@ -242,6 +242,16 @@ SkyGuard.Security = {
       SkyGuard.UI.openShelterDetails(SkyGuard.State.selectedShelterId);
     }
 
+    // If switched to AUDITOR, automatically open the Audit Console
+    if (roleDef.id === "AUDITOR") {
+      setTimeout(() => {
+        SkyGuard.Audit.renderTable();
+        SkyGuard.Audit.fetchLiveAuditTrail();
+        const modal = document.getElementById("auditModal");
+        if (modal) modal.classList.add("active");
+      }, 300);
+    }
+
     this.closeAuthModal();
   },
 

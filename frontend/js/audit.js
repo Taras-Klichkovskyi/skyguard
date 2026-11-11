@@ -88,6 +88,18 @@ SkyGuard.Audit = {
     }
   ],
 
+  init() {
+    try {
+      const saved = localStorage.getItem("skyguard_audit_log");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= this.log.length) {
+          this.log = parsed;
+        }
+      }
+    } catch (e) {}
+  },
+
   /**
    * Records a new immutable event into the audit trail
    */
@@ -112,6 +124,16 @@ SkyGuard.Audit = {
     };
 
     this.log.push(entry);
+    try {
+      localStorage.setItem("skyguard_audit_log", JSON.stringify(this.log));
+    } catch (e) {}
+
+    // Live update audit console if currently open
+    const modal = document.getElementById("auditModal");
+    if (modal && modal.classList.contains("active")) {
+      this.renderTable();
+    }
+
     console.debug(`[Audit Trail] Block #${seq} committed: ${action} (${statusCode})`);
     return entry;
   },
