@@ -62,11 +62,14 @@ SkyGuard.Api = {
    */
   initWebSocket() {
     try {
-      const wsUrl = "ws://localhost:8000/ws/v1/shelters";
+      const base = SkyGuard.Config.API_BASE_URL || "http://localhost:8000/api/v1";
+      const wsProto = base.startsWith("https") ? "wss" : "ws";
+      const host = base.replace(/^https?:\/\//, "").replace(/\/api\/v1\/?$/, "");
+      const wsUrl = `${wsProto}://${host}/ws/v1/shelters`;
       const ws = new WebSocket(wsUrl);
       ws.onopen = () => {
-        console.info("[SkyGuard WS] Connected to live backend stream");
-        SkyGuard.UI.showToast("⚡ Підключено до Live WebSocket сервера (порт 8000)", "success");
+        console.info("[SkyGuard WS] Connected to live backend stream:", wsUrl);
+        SkyGuard.UI.showToast("⚡ Підключено до Live WebSocket сервера", "success");
       };
       ws.onmessage = (e) => {
         try {
