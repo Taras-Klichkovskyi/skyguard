@@ -41,24 +41,121 @@ SkyGuard.init = async function () {
 };
 
 SkyGuard.bindEvents = function () {
-  // 1. Role Selector
-  const roleSelect = document.getElementById("roleSelector");
-  if (roleSelect) {
-    roleSelect.value = SkyGuard.State.role;
-    roleSelect.addEventListener("change", e => {
-      SkyGuard.State.setRole(e.target.value);
-      SkyGuard.UI.showToast(`Роль переключено на: ${e.target.options[e.target.selectedIndex].text}`, "info");
-      if (SkyGuard.State.selectedShelterId) {
-        SkyGuard.UI.openShelterDetails(SkyGuard.State.selectedShelterId);
+  // 1. Testing & Simulation Tools Dropdown
+  const btnToolsMenu = document.getElementById("btnToolsMenu");
+  const toolsDropdown = document.getElementById("toolsDropdown");
+
+  if (btnToolsMenu && toolsDropdown) {
+    btnToolsMenu.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toolsDropdown.classList.toggle("show");
+      btnToolsMenu.classList.toggle("active", toolsDropdown.classList.contains("show"));
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!toolsDropdown.contains(e.target) && e.target !== btnToolsMenu) {
+        toolsDropdown.classList.remove("show");
+        btnToolsMenu.classList.remove("active");
       }
     });
   }
 
-  // 2. Air Raid Alarm Triggers
+  // 2. Authentication & Role Switcher Modal (RBAC Portal)
+  const btnOpenAuthModal = document.getElementById("btnOpenAuthModal");
+  const closeAuthModalBtn = document.getElementById("closeAuthModalBtn");
+  const tabBtnRoles = document.getElementById("tabBtnRoles");
+  const tabBtnLogin = document.getElementById("tabBtnLogin");
+  const tabPaneRoles = document.getElementById("tabPaneRoles");
+  const tabPaneLogin = document.getElementById("tabPaneLogin");
+
+  if (btnOpenAuthModal) {
+    btnOpenAuthModal.addEventListener("click", () => SkyGuard.Security.openAuthModal());
+  }
+  if (closeAuthModalBtn) {
+    closeAuthModalBtn.addEventListener("click", () => SkyGuard.Security.closeAuthModal());
+  }
+
+  // Auth Tabs Switching
+  if (tabBtnRoles && tabBtnLogin && tabPaneRoles && tabPaneLogin) {
+    tabBtnRoles.addEventListener("click", () => {
+      tabBtnRoles.classList.add("active");
+      tabBtnLogin.classList.remove("active");
+      tabPaneRoles.style.display = "block";
+      tabPaneLogin.style.display = "none";
+    });
+
+    tabBtnLogin.addEventListener("click", () => {
+      tabBtnLogin.classList.add("active");
+      tabBtnRoles.classList.remove("active");
+      tabPaneLogin.style.display = "block";
+      tabPaneRoles.style.display = "none";
+    });
+  }
+
+  // Fast Role Switch Cards
+  document.querySelectorAll(".role-select-card").forEach(card => {
+    card.addEventListener("click", (e) => {
+      const role = card.dataset.role;
+      if (role) SkyGuard.Security.switchRole(role);
+    });
+  });
+
+  // JWT Quick Presets
+  document.querySelectorAll(".btn-preset-pill").forEach(pill => {
+    pill.addEventListener("click", () => {
+      const email = pill.dataset.email;
+      const inputEmail = document.getElementById("inputAuthEmail");
+      const inputPass = document.getElementById("inputAuthPassword");
+      if (inputEmail) inputEmail.value = email;
+      if (inputPass) inputPass.value = "skyguard-demo";
+      SkyGuard.UI.showToast(`Заповнено пресет: ${email}`, "info");
+    });
+  });
+
+  // Submit JWT Auth
+  const btnSubmitJwtAuth = document.getElementById("btnSubmitJwtAuth");
+  if (btnSubmitJwtAuth) {
+    btnSubmitJwtAuth.addEventListener("click", () => {
+      const email = document.getElementById("inputAuthEmail")?.value;
+      const pass = document.getElementById("inputAuthPassword")?.value;
+      SkyGuard.Security.loginWithJwt(email, pass);
+    });
+  }
+
+  // Legacy Role Selector (fallback compatibility)
+  const roleSelect = document.getElementById("roleSelector");
+  if (roleSelect) {
+    roleSelect.value = SkyGuard.State.role;
+    roleSelect.addEventListener("change", e => {
+      SkyGuard.Security.switchRole(e.target.value);
+    });
+  }
+
+  // 3. Air Raid Alarm Triggers
   const btnAlarm = document.getElementById("btnAlarmTrigger");
   const btnDismissAlert = document.getElementById("btnDismissAlert");
-  if (btnAlarm) btnAlarm.addEventListener("click", () => SkyGuard.UI.toggleAlarmMode());
+  if (btnAlarm) {
+    btnAlarm.addEventListener("click", () => {
+      if (toolsDropdown) toolsDropdown.classList.remove("show");
+      SkyGuard.UI.toggleAlarmMode();
+    });
+  }
   if (btnDismissAlert) btnDismissAlert.addEventListener("click", () => SkyGuard.UI.toggleAlarmMode());
+
+  // 4. Role Action Controls (Sidebar)
+  const btnManagerApplyStatus = document.getElementById("btnManagerApplyStatus");
+  if (btnManagerApplyStatus) {
+    btnManagerApplyStatus.addEventListener("click", () => SkyGuard.UI.applyManagerShelterUpdate());
+  }
+
+  const btnDsnsForceOpen = document.getElementById("btnDsnsForceOpen");
+  const btnDsnsForceClose = document.getElementById("btnDsnsForceClose");
+  if (btnDsnsForceOpen) {
+    btnDsnsForceOpen.addEventListener("click", () => SkyGuard.UI.forceDsnsStatus("OPEN"));
+  }
+  if (btnDsnsForceClose) {
+    btnDsnsForceClose.addEventListener("click", () => SkyGuard.UI.forceDsnsStatus("CLOSED"));
+  }
 
   // 3. Consent Management
   const consentBtn = document.getElementById("consentBtn");
@@ -117,6 +214,7 @@ SkyGuard.bindEvents = function () {
   const btnExportGeoJson = document.getElementById("btnExportGeoJson");
   if (btnExportGeoJson) {
     btnExportGeoJson.addEventListener("click", () => {
+      if (toolsDropdown) toolsDropdown.classList.remove("show");
       SkyGuard.Api.downloadGeoJson(SkyGuard.State.shelters);
       SkyGuard.UI.showToast("📥 Завантажено skyguard_lviv_shelters.geojson (RFC 7946)", "success");
     });
@@ -158,6 +256,7 @@ SkyGuard.bindEvents = function () {
 
   if (openAuditBtn) {
     openAuditBtn.addEventListener("click", () => {
+      if (toolsDropdown) toolsDropdown.classList.remove("show");
       SkyGuard.Audit.renderTable();
       document.getElementById("auditModal").classList.add("active");
     });

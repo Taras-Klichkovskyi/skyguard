@@ -28,7 +28,7 @@ SkyGuard.UI = {
   },
 
   /**
-   * Updates quick statistics counter in bottom banner
+   * Updates quick statistics counter in bottom banner & header status
    */
   updateStats() {
     const total = SkyGuard.State.shelters.length;
@@ -47,6 +47,23 @@ SkyGuard.UI = {
       elMode.textContent = SkyGuard.State.alarmActive 
         ? "🚨 ПОВІТРЯНА ТРИВОГА" 
         : (SkyGuard.State.consent ? "Штатний (L1/L2)" : "Обмежений (L1)");
+    }
+
+    // Header Status Pill
+    const headerPill = document.getElementById("headerStatusPill");
+    const headerText = document.getElementById("headerStatusText");
+    if (headerPill && headerText) {
+      if (SkyGuard.State.alarmActive) {
+        headerPill.style.background = "rgba(239, 68, 68, 0.15)";
+        headerPill.style.borderColor = "rgba(239, 68, 68, 0.4)";
+        headerPill.style.color = "#f87171";
+        headerText.textContent = "🚨 Повітряна тривога";
+      } else {
+        headerPill.style.background = "rgba(16, 185, 129, 0.1)";
+        headerPill.style.borderColor = "rgba(16, 185, 129, 0.3)";
+        headerPill.style.color = "#34d399";
+        headerText.textContent = "Львів · Штатний режим";
+      }
     }
   },
 
@@ -143,19 +160,46 @@ SkyGuard.UI = {
       `;
     }
 
-    // Commander (L2) Privacy Gate
+    // Commander Privacy Gate (RBAC & Consent Check)
     const commanderContent = document.getElementById("commanderDetailsContent");
+    const commanderTag = document.getElementById("commanderClassTag");
     if (commanderContent) {
-      if (SkyGuard.State.consent || SkyGuard.State.role !== "ANONYMOUS") {
+      if (SkyGuard.State.role === "OPERATOR") {
         commanderContent.className = "";
         document.getElementById("detailCommanderName").textContent = shelter.commander.name;
         document.getElementById("detailCommanderPhone").textContent = `📞 ${shelter.commander.phone}`;
         document.getElementById("detailCommanderId").textContent = `Службовий жетон: ${shelter.commander.id}`;
+        if (commanderTag) {
+          commanderTag.textContent = "L3 CONFIDENTIAL (Доступ ДСНС)";
+          commanderTag.className = "classification-tag tag-l3";
+        }
+      } else if (SkyGuard.State.role === "MANAGER") {
+        commanderContent.className = "";
+        document.getElementById("detailCommanderName").textContent = shelter.commander.name;
+        document.getElementById("detailCommanderPhone").textContent = `📞 ${shelter.commander.phone}`;
+        document.getElementById("detailCommanderId").textContent = `Службовий жетон: ${shelter.commander.id}`;
+        if (commanderTag) {
+          commanderTag.textContent = "L2 MANAGER";
+          commanderTag.className = "classification-tag tag-l2";
+        }
+      } else if (SkyGuard.State.consent && SkyGuard.State.role !== "ANONYMOUS") {
+        commanderContent.className = "";
+        document.getElementById("detailCommanderName").textContent = shelter.commander.name;
+        document.getElementById("detailCommanderPhone").textContent = `📞 ${shelter.commander.phone}`;
+        document.getElementById("detailCommanderId").textContent = `Службовий жетон: ${shelter.commander.id}`;
+        if (commanderTag) {
+          commanderTag.textContent = "L2 INTERNAL";
+          commanderTag.className = "classification-tag tag-l2";
+        }
       } else {
         commanderContent.className = "blurred-content";
         document.getElementById("detailCommanderName").textContent = "Ковальчук П. О.";
         document.getElementById("detailCommanderPhone").textContent = "📞 +380 67 ••• •• ••";
         document.getElementById("detailCommanderId").textContent = "Службовий жетон: DSNS-LV-••••";
+        if (commanderTag) {
+          commanderTag.textContent = "L1 MASKED (Потрібна згода)";
+          commanderTag.className = "classification-tag tag-l1";
+        }
       }
     }
 
@@ -174,7 +218,78 @@ SkyGuard.UI = {
       }
     }
 
+    // Role-Specific Action Control Cards
+    const citizenBox = document.getElementById("citizenActionsBox");
+    const dsnsBox = document.getElementById("dsnsActionsBox");
+    const managerBox = document.getElementById("managerActionsBox");
+
+    if (citizenBox) citizenBox.style.display = "none";
+    if (dsnsBox) dsnsBox.style.display = "none";
+    if (managerBox) managerBox.style.display = "none";
+
+    if (SkyGuard.State.role === "OPERATOR") {
+      if (dsnsBox) dsnsBox.style.display = "block";
+    } else if (SkyGuard.State.role === "MANAGER") {
+      if (managerBox) {
+        managerBox.style.display = "block";
+        const statusSelect = document.getElementById("managerStatusSelect");
+        const occInput = document.getElementById("managerOccupancyInput");
+        if (statusSelect) statusSelect.value = shelter.status;
+        if (occInput) {
+          occInput.value = shelter.current_occupancy;
+          occInput.max = shelter.capacity;
+        }
+      }
+    } else {
+      // CITIZEN, VOLUNTEER, AUDITOR, ANONYMOUS
+      if (citizenBox) citizenBox.style.display = "flex";
+    }
+
     if (sidebar) sidebar.classList.add("open");
+  },
+
+  /**
+   * Applies official status & occupancy update as Shelter Manager (No Quorum Required)
+   */
+  applyManagerShelterUpdate() {
+    const shelter = SkyGuard.State.getShelterById(SkyGuard.State.selectedShelterId);
+    if (!shelter) return;
+
+    const statusSelect = document.getElementById("managerStatusSelect");
+    const occInput = document.getElementById("managerOccupancyInput");
+
+    const newStatus = statusSelect ? statusSelect.value : shelter.status;
+    const newOccupancy = occInput ? parseInt(occInput.value, 10) : shelter.current_occupancy;
+
+    shelter.status = newStatus;
+    shelter.current_occupancy = isNaN(newOccupancy) ? shelter.current_occupancy : Math.min(newOccupancy, shelter.capacity);
+    shelter.confirmed_at = "Щойно (комендант)";
+
+    SkyGuard.Map.renderShelters();
+    this.updateStats();
+    this.openShelterDetails(shelter.id);
+
+    this.showToast(`✓ Офіційний статус «${shelter.name}» оновлено (${newStatus}, заповнено: ${shelter.current_occupancy})`, "success");
+    SkyGuard.Audit.logEvent("OFFICIAL_STATUS_UPDATE", `shelter/${shelter.id}/status`, "INTERNAL", 200);
+  },
+
+  /**
+   * Forces status override by DSNS Operator (Emergency Dispatch)
+   */
+  forceDsnsStatus(newStatus) {
+    const shelter = SkyGuard.State.getShelterById(SkyGuard.State.selectedShelterId);
+    if (!shelter) return;
+
+    shelter.status = newStatus;
+    shelter.confirmed_at = "Щойно (ДСНС)";
+
+    SkyGuard.Map.renderShelters();
+    this.updateStats();
+    this.openShelterDetails(shelter.id);
+
+    const actionText = newStatus === "OPEN" ? "ВІДЧИНЕНО ДЛЯ ЕВАКУАЦІЇ" : "ОПЕЧАТАНО / ЗАЧИНЕНО";
+    this.showToast(`🚒 ДСНС оперативно змінив статус: ${actionText} (200 OK)`, newStatus === "OPEN" ? "success" : "warning");
+    SkyGuard.Audit.logEvent("DSNS_FORCE_STATUS_OVERRIDE", `shelter/${shelter.id}/force_status`, "CONFIDENTIAL", 200);
   },
 
   /**

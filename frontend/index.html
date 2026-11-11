@@ -24,49 +24,73 @@
     <button class="btn-alert-dismiss" id="btnDismissAlert">✕ Закрити сповіщення</button>
   </div>
 
-  <!-- APP HEADER -->
+  <!-- APP HEADER (Clean Modern Architecture) -->
   <header class="app-header">
     <div class="brand">
       <div class="brand-logo">🛡️</div>
       <div class="brand-text">
-        <h1>SkyGuard <span class="badge-tag">SG-9 MVP</span></h1>
-        <div class="tagline">Data Governance by Design · Львів</div>
+        <div class="brand-title-row">
+          <h1>SkyGuard</h1>
+          <span class="badge-tag">Львів · Цивільний захист</span>
+        </div>
+        <div class="tagline">Платформа керованого обміну геоданими цивільного захисту</div>
       </div>
     </div>
 
     <div class="header-center">
-      <button class="btn-alarm-trigger" id="btnAlarmTrigger" title="Симуляція надходження сигналу від системи оповіщення ДСНС">
-        <span class="siren-icon">🚨</span>
-        <span id="alarmBtnText">Симуляція тривоги</span>
-      </button>
+      <div class="status-indicator-pill" id="headerStatusPill">
+        <span class="status-pulse-dot"></span>
+        <span id="headerStatusText">Львів · Штатний режим</span>
+      </div>
 
       <div class="consent-indicator granted" id="consentBtn" title="Керування згодою на обробку GPS-даних (ст. 11 ЗУ)">
         <span class="status-dot"></span>
-        <span id="consentStatusText">Згода на геодані: Активна (L2)</span>
+        <span id="consentStatusText">Згода на геодані: L2 Активна</span>
       </div>
     </div>
 
     <div class="header-actions">
-      <div class="role-selector-wrap">
-        <label for="roleSelector">Роль:</label>
-        <select id="roleSelector" class="role-select">
-          <option value="CITIZEN">👤 Громадянин (Citizen)</option>
-          <option value="VOLUNTEER">🦺 Волонтер (Verified Volunteer)</option>
-          <option value="MANAGER">🏢 Комендант (Shelter Manager)</option>
-          <option value="OPERATOR">🚒 Оператор ДСНС (DSNS Operator)</option>
-          <option value="AUDITOR">🛡️ Аудитор безпеки (Security Auditor)</option>
-          <option value="ANONYMOUS">🌐 Анонімний гість (Anonymous)</option>
-        </select>
+      <!-- Quick Test / Simulation Menu Dropdown -->
+      <div class="menu-dropdown-wrap">
+        <button class="btn-menu-trigger" id="btnToolsMenu" title="Лабораторні інструменти перевірки та тестування">
+          <span class="icon">🧪</span>
+          <span>Лабораторія тестування</span>
+          <span class="arrow">▾</span>
+        </button>
+        <div class="dropdown-panel" id="toolsDropdown">
+          <div class="dropdown-header">ІНСТРУМЕНТИ ТЕСТУВАННЯ (SG-9 / SG-11)</div>
+          <button class="dropdown-item" id="btnAlarmTrigger">
+            <span class="item-icon">🚨</span>
+            <div class="item-content">
+              <b>Сигнал «Повітряна тривога»</b>
+              <span>Перемикання карти в режим екстреної евакуації</span>
+            </div>
+          </button>
+          <button class="dropdown-item" id="openAuditBtn">
+            <span class="item-icon">📜</span>
+            <div class="item-content">
+              <b>Консоль аудитора SHA-256</b>
+              <span>Незмінний журнал транзакцій та перевірка ланцюга</span>
+            </div>
+          </button>
+          <button class="dropdown-item" id="btnExportGeoJson">
+            <span class="item-icon">📥</span>
+            <div class="item-content">
+              <b>Експорт GeoJSON (RFC 7946)</b>
+              <span>Завантаження відкритого шару укриттів</span>
+            </div>
+          </button>
+        </div>
       </div>
 
-      <button id="openAuditBtn" class="btn-audit-trigger" title="Перегляд незмінного криптографічного журналу (SG-11)">
-        <span>📜</span>
-        <span>Аудит SHA-256</span>
-      </button>
-
-      <button id="btnExportGeoJson" class="btn-export-trigger" title="Експорт відкритого реєстру GeoJSON (RFC 7946 L1 PUBLIC)">
-        <span>📥</span>
-        <span>GeoJSON</span>
+      <!-- Professional User / Role Auth Button -->
+      <button class="btn-user-profile" id="btnOpenAuthModal" title="Авторизація користувача та зміна ролі (RBAC)">
+        <span class="user-avatar" id="headerUserAvatar">👤</span>
+        <div class="user-meta">
+          <span class="user-role-name" id="headerUserRoleName">Громадянин</span>
+          <span class="user-role-badge" id="headerUserRoleBadge">L1 PUBLIC</span>
+        </div>
+        <span class="user-chevron">▾</span>
       </button>
     </div>
   </header>
@@ -210,8 +234,9 @@
           </div>
         </div>
 
-        <!-- ACTION BUTTONS -->
-        <div class="sidebar-actions">
+        <!-- DYNAMIC ROLE CONTROL PANELS -->
+        <!-- Citizen Panel -->
+        <div class="sidebar-actions" id="citizenActionsBox">
           <button class="btn-action-primary" id="openReportBtn">
             <span>📢</span>
             <span>Повідомити про стан (Краудсорсинг)</span>
@@ -220,6 +245,41 @@
             <span>🔐</span>
             <span>Телеметрія замка (Тест 403 Forbidden)</span>
           </button>
+        </div>
+
+        <!-- DSNS Operator Panel -->
+        <div class="role-control-card dsns-card" id="dsnsActionsBox" style="display: none;">
+          <div class="role-card-banner">
+            <span>🚒 Панель оперативного чергового ДСНС</span>
+            <span class="classification-tag tag-l3">L3 CONFIDENTIAL</span>
+          </div>
+          <p class="role-card-hint">Вам надано доступ до прямих контактів коменданта та примусового керування станом захисної споруди по місту.</p>
+          <div class="role-btn-row">
+            <button class="btn-role-action btn-dsns-open" id="btnDsnsForceOpen">🟢 Відчинити укриття</button>
+            <button class="btn-role-action btn-dsns-close" id="btnDsnsForceClose">🔴 Зачинити на перевірку</button>
+          </div>
+        </div>
+
+        <!-- Shelter Manager Panel -->
+        <div class="role-control-card manager-card" id="managerActionsBox" style="display: none;">
+          <div class="role-card-banner">
+            <span>🏢 Керування коменданта споруди</span>
+            <span class="classification-tag tag-l2">L2 INTERNAL</span>
+          </div>
+          <p class="role-card-hint">Офіційне оновлення статусу та заповненості застосовується миттєво без потреби збору кворуму.</p>
+          <div class="manager-form-grid">
+            <label>Офіційний статус:
+              <select id="managerStatusSelect" class="manager-input-select">
+                <option value="OPEN">🟢 Відчинено (є місця)</option>
+                <option value="LIMITED">🟡 Обмежено (заповнено)</option>
+                <option value="CLOSED">🔴 Зачинено (ремонт)</option>
+              </select>
+            </label>
+            <label>Фактично людей:
+              <input type="number" id="managerOccupancyInput" class="manager-input-num" min="0" max="2000" value="120">
+            </label>
+          </div>
+          <button class="btn-role-action btn-manager-apply" id="btnManagerApplyStatus">💾 Зберегти офіційний статус (200 OK)</button>
         </div>
       </div>
     </aside>
@@ -373,6 +433,158 @@
       <div class="modal-footer">
         <button class="btn-secondary" id="btnExportAuditJson">📥 Експорт audit_export.json</button>
         <button class="btn-primary" id="btnCloseAuditDialog">Закрити консоль</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: AUTHENTICATION & ROLE SWITCHER MODAL (RBAC) -->
+  <div class="modal-backdrop" id="authModal">
+    <div class="modal-dialog dialog-auth">
+      <div class="modal-header">
+        <div class="auth-header-title">
+          <span class="auth-key-icon">🔐</span>
+          <div>
+            <h2>Центр авторизації та ролей (RBAC)</h2>
+            <p>Управління правами та рівнями доступу відповідно до моделі Data Governance</p>
+          </div>
+        </div>
+        <button class="btn-close" id="closeAuthModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="auth-tab-buttons">
+          <button class="auth-tab-btn active" id="tabBtnRoles">Швидкий вибір ролі</button>
+          <button class="auth-tab-btn" id="tabBtnLogin">Вхід за обліковим записом (JWT)</button>
+        </div>
+
+        <!-- TAB 1: QUICK ROLE CARDS -->
+        <div class="auth-tab-pane active" id="tabPaneRoles">
+          <div class="role-cards-grid">
+            <!-- Citizen -->
+            <div class="role-select-card" data-role="CITIZEN">
+              <div class="card-head">
+                <span class="avatar-icon">👤</span>
+                <div>
+                  <div class="card-role-title">Громадянин (Citizen)</div>
+                  <span class="classification-tag tag-l1">L1 PUBLIC</span>
+                </div>
+              </div>
+              <ul class="role-feature-list">
+                <li>● Публічний реєстр споруд та SafeRoute</li>
+                <li>● Подання звіту свідка (перевірка DQ-1 ≤ 100 м)</li>
+                <li>● Керування згодою на GPS (L1 / L2)</li>
+                <li class="restricted-item">✕ Контакти комендантів та замок (403)</li>
+              </ul>
+              <button class="btn-switch-role">Активувати роль</button>
+            </div>
+
+            <!-- DSNS Operator -->
+            <div class="role-select-card" data-role="OPERATOR">
+              <div class="card-head">
+                <span class="avatar-icon">🚒</span>
+                <div>
+                  <div class="card-role-title">Оператор ДСНС (DSNS)</div>
+                  <span class="classification-tag tag-l3">L3 CONFIDENTIAL</span>
+                </div>
+              </div>
+              <ul class="role-feature-list">
+                <li>● Повний доступ до прямих контактів комендантів</li>
+                <li>● Оголошення сигналу «Повітряна тривога»</li>
+                <li>● Примусова зміна статусу будь-якого укриття</li>
+                <li>● Телеметрія та стан живлення смарт-замків</li>
+              </ul>
+              <button class="btn-switch-role">Активувати роль</button>
+            </div>
+
+            <!-- Shelter Manager -->
+            <div class="role-select-card" data-role="MANAGER">
+              <div class="card-head">
+                <span class="avatar-icon">🏢</span>
+                <div>
+                  <div class="card-role-title">Комендант укриття</div>
+                  <span class="classification-tag tag-l2">L2 INTERNAL</span>
+                </div>
+              </div>
+              <ul class="role-feature-list">
+                <li>● Офіційне оновлення статусу (без кворуму)</li>
+                <li>● Фіксація фактичної заповненості сховища</li>
+                <li>● Управління інфраструктурою життєзабезпечення</li>
+                <li>● Сервісний доступ до замка свого об'єкта</li>
+              </ul>
+              <button class="btn-switch-role">Активувати роль</button>
+            </div>
+
+            <!-- Security Auditor -->
+            <div class="role-select-card" data-role="AUDITOR">
+              <div class="card-head">
+                <span class="avatar-icon">🛡️</span>
+                <div>
+                  <div class="card-role-title">Аудитор безпеки</div>
+                  <span class="classification-tag tag-l3">L3 AUDIT</span>
+                </div>
+              </div>
+              <ul class="role-feature-list">
+                <li>● Повний доступ до консолі аудиту SHA-256</li>
+                <li>● Інспекція ланцюга та HMAC верифікація</li>
+                <li>● Аналіз інцидентів відхилення 401/403/422</li>
+                <li>● Експорт повного звіту про транзакції JSON</li>
+              </ul>
+              <button class="btn-switch-role">Активувати роль</button>
+            </div>
+
+            <!-- Verified Volunteer -->
+            <div class="role-select-card" data-role="VOLUNTEER">
+              <div class="card-head">
+                <span class="avatar-icon">🦺</span>
+                <div>
+                  <div class="card-role-title">Волонтер (Volunteer)</div>
+                  <span class="classification-tag tag-l2">L2 VERIFIED</span>
+                </div>
+              </div>
+              <ul class="role-feature-list">
+                <li>● Вага краудсорсингового звіту = 3 бали</li>
+                <li>● Миттєве закриття кворуму DQ-3 (3/3)</li>
+                <li>● Валідація генератора, зв'язку Starlink та води</li>
+                <li>● Підтвердження безпечності підходів</li>
+              </ul>
+              <button class="btn-switch-role">Активувати роль</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: LOGIN FORM (JWT FASTAPI) -->
+        <div class="auth-tab-pane" id="tabPaneLogin" style="display: none;">
+          <div class="login-box-container">
+            <div class="login-desc-box">
+              Авторизація через бекенд-шлюз FastAPI (`POST /api/v1/auth/login`) з видачею Bearer JWT-токена.
+            </div>
+
+            <div class="auth-input-group">
+              <label>Електронна пошта (Email):</label>
+              <input type="email" id="inputAuthEmail" class="auth-text-field" placeholder="dsns@skyguard.demo">
+            </div>
+
+            <div class="auth-input-group">
+              <label>Пароль:</label>
+              <input type="password" id="inputAuthPassword" class="auth-text-field" value="skyguard-demo">
+            </div>
+
+            <div class="quick-preset-container">
+              <span class="preset-label">Швидкі пресети акаунтів (пароль <code>skyguard-demo</code>):</span>
+              <div class="preset-pill-row">
+                <button type="button" class="btn-preset-pill" data-email="dsns@skyguard.demo" data-role="OPERATOR">🚒 Офіцер ДСНС</button>
+                <button type="button" class="btn-preset-pill" data-email="manager@skyguard.demo" data-role="MANAGER">🏢 Комендант</button>
+                <button type="button" class="btn-preset-pill" data-email="auditor@skyguard.demo" data-role="AUDITOR">🛡️ Аудитор</button>
+                <button type="button" class="btn-preset-pill" data-email="volunteer@skyguard.demo" data-role="VOLUNTEER">🦺 Волонтер</button>
+                <button type="button" class="btn-preset-pill" data-email="citizen@skyguard.demo" data-role="CITIZEN">👤 Громадянин</button>
+              </div>
+            </div>
+
+            <button class="btn-primary btn-submit-jwt-auth" id="btnSubmitJwtAuth">
+              <span>Авторизуватися в системі</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
