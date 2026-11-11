@@ -352,7 +352,8 @@ SkyGuard.UI = {
     const toggleBtn = document.getElementById("btnTogglePresence");
     if (!card || !statusText || !toggleBtn) return;
 
-    const isCheckedIn = (SkyGuard.State.checkedInShelterId === shelter.id);
+    const isCheckedIn = SkyGuard.State.checkedInShelterId && 
+      (String(SkyGuard.State.checkedInShelterId).toLowerCase() === String(shelter.id).toLowerCase());
 
     // Calculate real distance
     let dist = 1000;
@@ -393,10 +394,17 @@ SkyGuard.UI = {
     const shelter = SkyGuard.State.getShelterById(SkyGuard.State.selectedShelterId);
     if (!shelter) return;
 
-    if (SkyGuard.State.checkedInShelterId === shelter.id) {
+    const isCheckedIn = SkyGuard.State.checkedInShelterId && 
+      (String(SkyGuard.State.checkedInShelterId).toLowerCase() === String(shelter.id).toLowerCase());
+
+    const currentOcc = (typeof shelter.current_occupancy === "number" && !isNaN(shelter.current_occupancy))
+      ? shelter.current_occupancy
+      : 0;
+
+    if (isCheckedIn) {
       // User is checking OUT
       SkyGuard.State.checkedInShelterId = null;
-      shelter.current_occupancy = Math.max(0, shelter.current_occupancy - 1);
+      shelter.current_occupancy = Math.max(0, currentOcc - 1);
       shelter.confirmed_at = "Щойно (GPS вихід)";
       this.showToast(`🚪 Фіксація виходу: ви покинули укриття «${shelter.name}» (-1 місце)`, "info");
       SkyGuard.Audit.logEvent("GEOFENCE_PRESENCE_CHECKOUT", `shelter/${shelter.id}`, "INTERNAL", 200);
@@ -404,21 +412,34 @@ SkyGuard.UI = {
       // User is checking IN
       if (SkyGuard.State.checkedInShelterId) {
         const prev = SkyGuard.State.getShelterById(SkyGuard.State.checkedInShelterId);
-        if (prev) prev.current_occupancy = Math.max(0, prev.current_occupancy - 1);
+        if (prev) {
+          const prevOcc = (typeof prev.current_occupancy === "number" && !isNaN(prev.current_occupancy))
+            ? prev.current_occupancy
+            : 0;
+          prev.current_occupancy = Math.max(0, prevOcc - 1);
+        }
       }
       SkyGuard.State.checkedInShelterId = shelter.id;
-      shelter.current_occupancy = Math.min(shelter.capacity, shelter.current_occupancy + 1);
+      shelter.current_occupancy = Math.min(shelter.capacity, currentOcc + 1);
       shelter.confirmed_at = "Щойно (GPS чекін ≤ 30м)";
+
+      // Move user GPS position inside shelter so distance updates immediately
+      SkyGuard.State.setUserLocation(shelter.lat, shelter.lon, `Укриття «${shelter.name}» (всередині)`);
+      SkyGuard.Map.updateUserMarker();
+
       this.showToast(`📍 GPS-авточекін: вашу присутність зараховано (+1 людина до «${shelter.name}»)!`, "success");
       SkyGuard.Audit.logEvent("GEOFENCE_PRESENCE_CHECKIN", `shelter/${shelter.id}`, "INTERNAL", 200);
     }
 
-    // Broadcast live across tabs
-    SkyGuard.State.broadcastShelterUpdate(shelter.id, shelter.status, shelter.confirmed_at);
+    // 1. Broadcast live across tabs in same browser (with occupancy)
+    SkyGuard.State.broadcastShelterUpdate(shelter.id, shelter.status, shelter.confirmed_at, shelter.current_occupancy);
+
+    // 2. Transmit to live backend API & WebSocket stream
     if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
       SkyGuard.Api.sendShelterStatusUpdate(shelter.id, shelter.status, shelter.current_occupancy);
     }
 
+    // 3. Immediately re-render details sidebar, stats counter, and map
     this.openShelterDetails(shelter.id);
     this.updateStats();
     SkyGuard.Map.renderShelters();

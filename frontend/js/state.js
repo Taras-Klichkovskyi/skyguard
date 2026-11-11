@@ -80,6 +80,8 @@ SkyGuard.State = {
             const { shelterId, shelterName, status, confirmed_at, occupancy } = event.data;
             const s = this.getShelterById(shelterId, shelterName);
             if (s) {
+              const oldStatus = s.status;
+              const oldOccupancy = s.current_occupancy;
               s.status = status;
               if (confirmed_at) s.confirmed_at = confirmed_at;
               if (typeof occupancy === "number") s.current_occupancy = occupancy;
@@ -90,8 +92,12 @@ SkyGuard.State = {
                    (shelterId && String(this.selectedShelterId).toLowerCase() === String(shelterId).toLowerCase()))) {
                 SkyGuard.UI.openShelterDetails(s.id);
               }
-              const statusName = status === "OPEN" ? "ВІДЧИНЕНО" : (status === "CLOSED" ? "ЗАЧИНЕНО" : "ОБМЕЖЕНО");
-              SkyGuard.UI.showToast(`🚨 Оновлення ДСНС: ${s.name} → ${statusName}!`, status === "OPEN" ? "success" : "warning");
+              if (oldStatus !== status) {
+                const statusName = status === "OPEN" ? "ВІДЧИНЕНО" : (status === "CLOSED" ? "ЗАЧИНЕНО" : "ОБМЕЖЕНО");
+                SkyGuard.UI.showToast(`🚨 Оновлення ДСНС: ${s.name} → ${statusName}!`, status === "OPEN" ? "success" : "warning");
+              } else if (typeof occupancy === "number" && oldOccupancy !== occupancy) {
+                SkyGuard.UI.showToast(`📍 Live GPS: Заповненість «${s.name}» оновлено (${occupancy}/${s.capacity} осіб)`, "info");
+              }
             }
           }
         };

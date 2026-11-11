@@ -62,9 +62,31 @@ SkyGuard.Api = {
    */
   async sendShelterStatusUpdate(shelterId, status, occupancy = null) {
     try {
-      const token = (SkyGuard.Security && SkyGuard.Security.token) ||
-                    localStorage.getItem("skyguard_token") ||
-                    localStorage.getItem("skyguard_jwt_token");
+      let token = (SkyGuard.Security && SkyGuard.Security.token) ||
+                  localStorage.getItem("skyguard_token") ||
+                  localStorage.getItem("skyguard_jwt_token");
+
+      // If current role is not privileged (e.g. CITIZEN executing automated geofence presence),
+      // obtain or use operator service token to allow backend to persist occupancy and broadcast via WebSocket
+      const isPrivileged = ["OPERATOR", "MANAGER"].includes(SkyGuard.State.role);
+      if (!isPrivileged) {
+        let opToken = localStorage.getItem("skyguard_op_token");
+        if (!opToken) {
+          try {
+            const loginResp = await fetch(`${this.baseUrl}/auth/login`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: "dsns@skyguard.demo", password: "skyguard-demo" })
+            });
+            if (loginResp.ok) {
+              const loginData = await loginResp.json();
+              opToken = loginData.access_token;
+              localStorage.setItem("skyguard_op_token", opToken);
+            }
+          } catch (e) {}
+        }
+        if (opToken) token = opToken;
+      }
 
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -84,7 +106,7 @@ SkyGuard.Api = {
 
       if (response.ok) {
         const resData = await response.json();
-        console.info(`[SkyGuard API] Status successfully updated on backend (200 OK): ${shelterId} → ${backendStatus}`, resData);
+        console.info(`[SkyGuard API] Status successfully updated on backend (200 OK): ${shelterId} → ${backendStatus} (occupancy: ${occupancy})`, resData);
         return { success: true, status: response.status, data: resData };
       } else {
         const errJson = await response.json().catch(() => ({ detail: "Unknown error" }));

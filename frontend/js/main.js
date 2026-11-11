@@ -199,7 +199,10 @@ SkyGuard.bindEvents = function () {
   // 4b. Smart Geofence Presence Check-in Toggle
   const btnTogglePresence = document.getElementById("btnTogglePresence");
   if (btnTogglePresence) {
-    btnTogglePresence.addEventListener("click", () => SkyGuard.UI.toggleGeofencePresence());
+    btnTogglePresence.onclick = (e) => {
+      if (e) e.preventDefault();
+      SkyGuard.UI.toggleGeofencePresence();
+    };
   }
 
   // 5. Geolocation Pill in Header (Click transmits GPS location immediately)
