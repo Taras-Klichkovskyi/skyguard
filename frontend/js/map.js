@@ -154,9 +154,9 @@ SkyGuard.Map = {
   },
 
   /**
-   * Draws interactive animated route polyline to destination shelter
+   * Draws interactive animated route polyline to destination shelter along real street network (OSRM)
    */
-  drawRouteToShelter(shelterId) {
+  async drawRouteToShelter(shelterId) {
     const shelter = SkyGuard.State.getShelterById(shelterId);
     if (!shelter || !SkyGuard.State.userLocation) return;
 
@@ -165,23 +165,33 @@ SkyGuard.Map = {
     const userPoint = [SkyGuard.State.userLocation.lat, SkyGuard.State.userLocation.lon];
     const shelterPoint = [shelter.lat, shelter.lon];
 
-    // Animated dashed polyline
-    SkyGuard.State.routeLine = L.polyline([userPoint, shelterPoint], {
+    SkyGuard.UI.showToast("🗺️ Розрахунок безпечного маршруту SafeRoute...", "info");
+
+    const routeData = await SkyGuard.Geo.getWalkingRoute(
+      userPoint[0], userPoint[1], shelterPoint[0], shelterPoint[1]
+    );
+
+    // Draw animated dashed route line following real street geometry
+    SkyGuard.State.routeLine = L.polyline(routeData.coordinates, {
       color: "#38bdf8",
-      weight: 4,
-      opacity: 0.9,
-      dashArray: "8, 8",
+      weight: 5,
+      opacity: 0.95,
+      dashArray: "10, 10",
       className: "route-pulse-line"
     }).addTo(this.markersLayer);
 
     // Fit view to include route
-    this.instance.fitBounds(L.latLngBounds([userPoint, shelterPoint]), { padding: [80, 80] });
+    this.instance.fitBounds(SkyGuard.State.routeLine.getBounds(), { padding: [60, 60] });
 
-    const dist = SkyGuard.Geo.calculateHaversineDistance(userPoint[0], userPoint[1], shelterPoint[0], shelterPoint[1]);
-    const mins = SkyGuard.Geo.calculateWalkingMinutes(dist);
+    const routeEstText = document.getElementById("routeEstText");
+    if (routeEstText) {
+      routeEstText.textContent = `🚶 ~${routeData.durationMinutes} хв пішки (${SkyGuard.Geo.formatDistance(routeData.distanceMetres)})`;
+    }
+
+    const typeDesc = routeData.isPedestrianNetwork ? "вулицями та тротуарами" : "по прямій (Haversine)";
     SkyGuard.UI.showToast(
-      `🗺️ Побудовано найкоротший піший маршрут: ${SkyGuard.Geo.formatDistance(dist)} (~${mins} хв)`,
-      "info"
+      `✓ SafeRoute: ${SkyGuard.Geo.formatDistance(routeData.distanceMetres)} (${typeDesc}, ~${routeData.durationMinutes} хв)`,
+      "success"
     );
   },
 

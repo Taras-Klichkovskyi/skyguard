@@ -48,6 +48,40 @@ SkyGuard.Geo = {
   },
 
   /**
+   * Calculates actual walking route along street sidewalks via OpenStreetMap OSRM routing service
+   * Falls back to straight Haversine line if offline
+   */
+  async getWalkingRoute(lat1, lon1, lat2, lon2) {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/walking/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          return {
+            coordinates: route.geometry.coordinates.map(pt => [pt[1], pt[0]]), // Leaflet expects [lat, lon]
+            distanceMetres: Math.round(route.distance),
+            durationMinutes: Math.max(1, Math.round(route.duration / 60)),
+            isPedestrianNetwork: true
+          };
+        }
+      }
+    } catch (e) {
+      console.debug("[SkyGuard Router] OSRM offline, falling back to Haversine straight line");
+    }
+
+    // Mathematical Haversine straight-line fallback
+    const directDist = this.calculateHaversineDistance(lat1, lon1, lat2, lon2);
+    return {
+      coordinates: [[lat1, lon1], [lat2, lon2]],
+      distanceMetres: directDist,
+      durationMinutes: this.calculateWalkingMinutes(directDist),
+      isPedestrianNetwork: false
+    };
+  },
+
+  /**
    * Requests real GPS coordinates from browser via HTML5 Geolocation API
    * @param {Function} onSuccess Callback with (lat, lon)
    * @param {Function} onError Callback with Error
