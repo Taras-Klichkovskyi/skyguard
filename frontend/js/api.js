@@ -71,6 +71,7 @@ SkyGuard.Api = {
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data);
+          // Handle Shelter status updates
           if (msg.type === "shelter.updated" && msg.shelter) {
             const f = msg.shelter;
             const updatedId = f.properties.id || f.id;
@@ -84,6 +85,18 @@ SkyGuard.Api = {
                 SkyGuard.UI.openShelterDetails(updatedId);
               }
               SkyGuard.UI.showToast(`⚡ Live WebSocket: Статус ${existing.name} оновлено на ${existing.status}!`, "info");
+            }
+          }
+
+          // Handle Air Raid Alert push notification from alerts.in.ua (SG-23)
+          if (msg.type === "air_raid_alert.updated") {
+            const isCurrentlyAlarm = SkyGuard.State.alarmActive;
+            if (msg.active && !isCurrentlyAlarm) {
+              SkyGuard.UI.toggleAlarmMode();
+              SkyGuard.UI.showToast(`🚨 Отримано сигнал повітряної тривоги від alerts.in.ua (${msg.location})!`, "error");
+            } else if (!msg.active && isCurrentlyAlarm) {
+              SkyGuard.UI.toggleAlarmMode();
+              SkyGuard.UI.showToast(`✓ Відбій повітряної тривоги (${msg.location})`, "success");
             }
           }
         } catch (err) {}

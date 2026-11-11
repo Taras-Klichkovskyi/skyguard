@@ -117,6 +117,44 @@ SkyGuard.Audit = {
   },
 
   /**
+   * Fetches live audit log from backend API if user is authorized as Auditor (SG-11)
+   */
+  async fetchLiveAuditTrail() {
+    const token = localStorage.getItem("skyguard_token");
+    if (!token) return;
+
+    try {
+      const resp = await fetch(`${SkyGuard.Config.API_BASE_URL}/governance/audit-trail?limit=100`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        }
+      });
+
+      if (resp.status === 200) {
+        const data = await resp.json();
+        if (data && data.entries && data.entries.length > 0) {
+          this.log = data.entries.map((e, idx) => ({
+            seq: e.id || (idx + 1),
+            time: e.occurred_at,
+            actor: e.actor_role ? e.actor_role.toLowerCase() : "actor",
+            role: e.actor_role || "Security Auditor",
+            action: e.action,
+            resource: e.entity_type ? `${e.entity_type}/${e.entity_id || ''}` : "governance/audit-trail",
+            cls: e.data_classification || "CONFIDENTIAL",
+            status: e.http_status || 200,
+            hash: e.hash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }));
+          this.renderTable();
+          SkyGuard.UI.showToast(`✓ Журнал аудиту завантажено з сервера (${data.count} блоків SHA-256)`, "success");
+        }
+      }
+    } catch (e) {
+      console.debug("[Audit] Live backend offline, using local store:", e.message);
+    }
+  },
+
+  /**
    * Renders the audit log table into the modal dialog
    */
   renderTable(filterStatus = null) {

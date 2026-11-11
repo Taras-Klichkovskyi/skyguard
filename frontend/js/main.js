@@ -292,6 +292,7 @@ SkyGuard.bindEvents = function () {
     openAuditBtn.addEventListener("click", () => {
       if (toolsDropdown) toolsDropdown.classList.remove("show");
       SkyGuard.Audit.renderTable();
+      SkyGuard.Audit.fetchLiveAuditTrail();
       document.getElementById("auditModal").classList.add("active");
     });
   }

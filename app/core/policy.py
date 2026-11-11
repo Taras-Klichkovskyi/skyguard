@@ -73,10 +73,19 @@ SHELTER_STATUS_REPORT = AccessPolicy(
     requires_consent=ConsentPurpose.REPORT_GEOFENCE,
 )
 
+# Читання журналу аудиту (L3 CONFIDENTIAL): лише Аудитор безпеки (Security Auditor).
+# Громадяни, волонтери, коменданти, оператори отримують 403 DENIED_403_RBAC (TC-06 / SG-11).
+AUDIT_TRAIL_READ = AccessPolicy(
+    action="AUDIT_TRAIL_READ",
+    classification=DataClassification.CONFIDENTIAL,
+    allowed_roles=frozenset({R.SECURITY_AUDITOR}),
+)
+
 ALL_POLICIES = (
     SHELTER_READ_CONTACTS,
     SHELTER_NEARBY_SEARCH,
     CONSENT_MANAGE_OWN,
     SHELTER_STATUS_UPDATE,
     SHELTER_STATUS_REPORT,
+    AUDIT_TRAIL_READ,
 )

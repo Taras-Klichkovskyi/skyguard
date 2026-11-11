@@ -29,5 +29,15 @@ services:
       db:
         condition: service_healthy
 
+  frontend:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "8085:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - api
+
 volumes:
   pgdata:

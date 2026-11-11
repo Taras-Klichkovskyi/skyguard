@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import alerts, auth, consents, health, shelters, ws
+from app.api.routes import alerts, audit, auth, consents, health, shelters, ws
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.services import alerts as alerts_service
@@ -74,7 +74,6 @@ app.include_router(auth.router)
 app.include_router(consents.router)
 app.include_router(shelters.router)
 app.include_router(alerts.router)
+app.include_router(audit.router)
 
 app.include_router(ws.router)
-
-# Наступний роутер: /api/v1/governance/audit-trail — консоль аудитора (SG-11)
