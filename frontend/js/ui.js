@@ -14,6 +14,11 @@ SkyGuard.UI = {
     const container = document.getElementById("toastContainer");
     if (!container) return;
 
+    // Clear previous toasts on mobile to avoid stacking on screen
+    if (window.innerWidth <= 768) {
+      container.innerHTML = "";
+    }
+
     const toast = document.createElement("div");
     toast.className = `toast ${type}`;
     toast.innerHTML = `<span>${message}</span>`;
@@ -21,10 +26,10 @@ SkyGuard.UI = {
 
     setTimeout(() => {
       toast.style.opacity = "0";
-      toast.style.transform = "translateX(50px)";
+      toast.style.transform = window.innerWidth <= 768 ? "translateY(-10px)" : "translateX(50px)";
       toast.style.transition = "all 0.3s ease";
-      setTimeout(() => toast.remove(), 300);
-    }, 4000);
+      setTimeout(() => toast.remove(), 250);
+    }, 2200);
   },
 
   /**
@@ -249,6 +254,22 @@ SkyGuard.UI = {
       sidebar.classList.add("open");
       document.body.classList.add("sidebar-open");
     }
+    // Reset bottom sheet to Peek mode on mobile
+    if (sidebar) {
+      sidebar.classList.remove("expanded");
+      const expandBtn = document.getElementById("btnMobileExpand");
+      if (expandBtn) expandBtn.textContent = "▲ Деталі";
+    }
+    const mobileRouteBtn = document.getElementById("btnMobileRoute");
+    if (mobileRouteBtn) {
+      if (SkyGuard.State.routeLine) {
+        mobileRouteBtn.textContent = "✕ Скинути маршрут";
+        mobileRouteBtn.classList.add("active");
+      } else {
+        mobileRouteBtn.textContent = "🚶 Прокласти маршрут";
+        mobileRouteBtn.classList.remove("active");
+      }
+    }
   },
 
   /**
@@ -329,6 +350,20 @@ SkyGuard.UI = {
         this.closeShelterDetails();
       }
     });
+  },
+
+    /**
+   * Toggles mobile bottom sheet between Peek (compact ~140px) and Expanded (78vh) modes
+   */
+  toggleMobileExpand() {
+    const sidebar = document.getElementById("detailsSidebar");
+    const expandBtn = document.getElementById("btnMobileExpand");
+    if (!sidebar) return;
+
+    const isExpanded = sidebar.classList.toggle("expanded");
+    if (expandBtn) {
+      expandBtn.textContent = isExpanded ? "▼ Згорнути" : "▲ Деталі";
+    }
   },
 
   closeShelterDetails() {

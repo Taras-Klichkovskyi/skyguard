@@ -211,6 +211,33 @@ SkyGuard.bindEvents = function () {
 
   if (closeSidebarBtn) closeSidebarBtn.addEventListener("click", () => SkyGuard.UI.closeShelterDetails());
   SkyGuard.UI.initMobileGestures();
+
+  const btnMobileRoute = document.getElementById("btnMobileRoute");
+  const btnMobileExpand = document.getElementById("btnMobileExpand");
+  const sheetDragHandle = document.getElementById("sheetDragHandle");
+
+  if (btnMobileRoute) {
+    btnMobileRoute.addEventListener("click", () => {
+      if (SkyGuard.State.routeLine) {
+        SkyGuard.Map.clearRouteLine();
+        SkyGuard.UI.showToast("Маршрут скинуто", "info");
+      } else if (SkyGuard.State.selectedShelterId) {
+        SkyGuard.Map.drawRouteToShelter(SkyGuard.State.selectedShelterId);
+      }
+    });
+  }
+
+  if (btnMobileExpand) {
+    btnMobileExpand.addEventListener("click", () => {
+      SkyGuard.UI.toggleMobileExpand();
+    });
+  }
+
+  if (sheetDragHandle) {
+    sheetDragHandle.addEventListener("click", () => {
+      SkyGuard.UI.toggleMobileExpand();
+    });
+  }
   if (requestTelemetryBtn) requestTelemetryBtn.addEventListener("click", () => SkyGuard.Security.triggerForbiddenIncident());
   if (openReportBtn) openReportBtn.addEventListener("click", () => SkyGuard.Crowdsource.openReportModal());
   if (btnToggleRoute) {

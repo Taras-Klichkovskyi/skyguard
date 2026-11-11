@@ -1697,6 +1697,10 @@ body {
   display: none;
 }
 
+.mobile-sheet-actions {
+  display: none;
+}
+
 /* Tablet & Large Mobile (max-width: 900px) */
 @media (max-width: 900px) {
   header.app-header {
@@ -1841,6 +1845,14 @@ body {
     gap: 7px;
     border-radius: 12px;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
+    transition: all 0.25s ease;
+  }
+
+  /* HIDE FLOATING FILTERS WHEN SHELTER IS SELECTED OR ROUTE ACTIVE -> PURE MAP VIEW! */
+  body.sidebar-open .floating-filters {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(-25px);
   }
 
   .search-box input {
@@ -1914,13 +1926,12 @@ body {
 
   body.sidebar-open .map-stats-widget,
   aside.details-sidebar.open ~ .map-stats-widget {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(20px);
-    transition: all 0.2s ease;
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
-  /* 5. Details Sidebar as Native Bottom Sheet */
+  /* 5. Details Sidebar as Native Bottom Sheet (Peek vs Expanded mode) */
   aside.details-sidebar {
     top: auto;
     bottom: 0;
@@ -1929,22 +1940,28 @@ body {
     width: 100%;
     max-width: 100vw;
     height: auto;
-    max-height: 80vh;
-    max-height: 80dvh;
+    max-height: 155px; /* PEEK MODE: Compact 155px leaves 80% map open! */
     border-radius: 20px 20px 0 0;
     border-left: none;
     border-right: none;
     border-bottom: none;
     border-top: 1px solid var(--border-color);
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.85);
-    transform: translateY(105%);
-    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.85);
+    transform: translateY(115%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 1050;
-    padding-bottom: env(safe-area-inset-bottom, 12px);
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+    overflow: hidden;
   }
 
   aside.details-sidebar.open {
     transform: translateY(0);
+  }
+
+  /* EXPANDED MODE (when user taps "▲ Деталі") */
+  aside.details-sidebar.open.expanded {
+    max-height: 78vh;
+    max-height: 78dvh;
   }
 
   .sheet-drag-handle {
@@ -1953,38 +1970,123 @@ body {
     height: 5px;
     background: #475569;
     border-radius: 3px;
-    margin: 8px auto 2px auto;
-    cursor: grab;
+    margin: 8px auto 4px auto;
+    cursor: pointer;
   }
 
   .sidebar-header {
-    padding: 6px 16px 12px 16px;
+    padding: 4px 16px 8px 16px;
+    border-bottom: none;
+  }
+
+  .sidebar-header-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sidebar-header-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
   }
 
   .shelter-title {
     font-size: 1.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .shelter-address {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
   }
 
-  .sidebar-content {
-    padding: 12px 16px;
-    gap: 12px;
-    max-height: calc(80vh - 80px);
-    max-height: calc(80dvh - 80px);
+  .distance-tag {
+    margin-top: 0;
+    font-size: 0.74rem;
+    padding: 2px 7px;
+  }
+
+  .status-badge {
+    margin-bottom: 0;
+    font-size: 0.72rem;
+    padding: 2px 7px;
+  }
+
+  /* Peek Action Bar (Walk Route + Expand) */
+  .mobile-sheet-actions {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 12px 16px;
+  }
+
+  .btn-mobile-route {
+    flex: 2;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border: 1px solid #38bdf8;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+    transition: all 0.2s;
+  }
+
+  .btn-mobile-route.active {
+    background: #1e293b;
+    border-color: #64748b;
+    color: #38bdf8;
+    box-shadow: none;
+  }
+
+  .btn-mobile-expand {
+    flex: 1;
+    background: rgba(30, 41, 59, 0.85);
+    color: #cbd5e1;
+    border: 1px solid var(--border-color);
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all 0.2s;
+  }
+
+  /* Hide huge scrollable content in Peek Mode! */
+  aside.details-sidebar:not(.expanded) .sidebar-content {
+    display: none !important;
+  }
+
+  /* In Expanded Mode, show scrollable details */
+  aside.details-sidebar.expanded .sidebar-content {
+    display: flex !important;
+    max-height: calc(78vh - 145px);
+    max-height: calc(78dvh - 145px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    border-top: 1px solid var(--border-color);
+    padding: 14px 16px;
+    gap: 12px;
   }
 
-  .route-action-card {
-    padding: 10px;
-  }
-
-  .btn-toggle-route {
-    padding: 8px 12px;
-    font-size: 0.8rem;
+  /* Desktop route card hidden inside content since mobilePeekBar is always visible */
+  aside.details-sidebar .sidebar-content #routeCard {
+    display: none !important;
   }
 
   .amenities-grid {
@@ -2005,7 +2107,7 @@ body {
 
   /* 6. Leaflet Controls Mobile Positioning */
   .leaflet-bottom.leaflet-right {
-    bottom: 50px !important;
+    bottom: 55px !important;
     right: 10px !important;
   }
 
@@ -2130,18 +2232,33 @@ body {
     border-radius: 20px 20px 0 0 !important;
   }
 
-  /* 8. Toast Notifications Mobile */
+  /* 8. Toast Notifications Mobile (Centered sleek pill capsule) */
   .toast-container {
-    top: calc(var(--header-height) + 8px);
-    left: 10px;
-    right: 10px;
+    position: fixed;
+    top: calc(var(--header-height) + 10px);
+    left: 50%;
+    right: auto;
     bottom: auto;
-    max-width: none;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    z-index: 3000;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
   }
 
   .toast {
-    width: 100%;
-    font-size: 0.82rem;
+    width: auto;
+    padding: 7px 16px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.15);
   }
 }
 

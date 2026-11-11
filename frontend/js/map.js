@@ -172,8 +172,6 @@ SkyGuard.Map = {
     const userPoint = [SkyGuard.State.userLocation.lat, SkyGuard.State.userLocation.lon];
     const shelterPoint = [shelter.lat, shelter.lon];
 
-    SkyGuard.UI.showToast("🗺️ Розрахунок безпечного маршруту SafeRoute...", "info");
-
     const routeData = await SkyGuard.Geo.getWalkingRoute(
       userPoint[0], userPoint[1], shelterPoint[0], shelterPoint[1]
     );
@@ -187,8 +185,26 @@ SkyGuard.Map = {
       className: "route-pulse-line"
     }).addTo(this.markersLayer);
 
-    // Fit view to include route
-    this.instance.fitBounds(SkyGuard.State.routeLine.getBounds(), { padding: [60, 60] });
+    // Fit view to include route with padding on mobile so route is centered ABOVE the bottom peek card
+    const isMobile = window.innerWidth <= 768;
+    const paddingOpts = isMobile 
+      ? { paddingBottomRight: [20, 180], paddingTopLeft: [20, 30] }
+      : { padding: [60, 60] };
+    this.instance.fitBounds(SkyGuard.State.routeLine.getBounds(), paddingOpts);
+
+    // Collapse sheet to Peek mode on mobile so the map and route are 100% visible
+    const sidebar = document.getElementById("detailsSidebar");
+    if (sidebar && isMobile) {
+      sidebar.classList.remove("expanded");
+      const expandBtn = document.getElementById("btnMobileExpand");
+      if (expandBtn) expandBtn.textContent = "▲ Деталі";
+    }
+
+    const mobileRouteBtn = document.getElementById("btnMobileRoute");
+    if (mobileRouteBtn) {
+      mobileRouteBtn.textContent = "✕ Скинути маршрут";
+      mobileRouteBtn.classList.add("active");
+    }
 
     const routeEstText = document.getElementById("routeEstText");
     if (routeEstText) {
@@ -209,6 +225,11 @@ SkyGuard.Map = {
     if (SkyGuard.State.routeLine && this.markersLayer) {
       this.markersLayer.removeLayer(SkyGuard.State.routeLine);
       SkyGuard.State.routeLine = null;
+    }
+    const mobileRouteBtn = document.getElementById("btnMobileRoute");
+    if (mobileRouteBtn) {
+      mobileRouteBtn.textContent = "🚶 Прокласти маршрут";
+      mobileRouteBtn.classList.remove("active");
     }
   }
 };

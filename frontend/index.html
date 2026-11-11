@@ -119,21 +119,29 @@
       </div>
     </div>
 
-    <!-- SLIDE-OVER SHELTER DETAILS SIDEBAR -->
+    <!-- SLIDE-OVER SHELTER DETAILS SIDEBAR (Desktop drawer & Mobile Peek Bottom Sheet) -->
     <aside class="details-sidebar" id="detailsSidebar">
       <!-- Mobile Bottom Sheet Handle -->
       <div class="sheet-drag-handle" id="sheetDragHandle"></div>
       <div class="sidebar-header">
-        <div>
-          <span class="status-badge badge-open" id="detailStatusBadge">Відчинено</span>
+        <div class="sidebar-header-info">
+          <div class="sidebar-header-badges">
+            <span class="status-badge badge-open" id="detailStatusBadge">Відчинено</span>
+            <div class="distance-tag" id="detailDistance">🎯 Розрахунок відстані...</div>
+          </div>
           <h2 class="shelter-title" id="detailTitle">Назва укриття</h2>
           <div class="shelter-address" id="detailAddress">📍 Адреса</div>
-          <div class="distance-tag" id="detailDistance">🎯 Розрахунок відстані...</div>
         </div>
-        <button class="btn-close" id="closeSidebarBtn">&times;</button>
+        <button class="btn-close" id="closeSidebarBtn" title="Закрити">&times;</button>
       </div>
 
-      <div class="sidebar-content">
+      <!-- Quick Action Bar on Mobile Peek View -->
+      <div class="mobile-sheet-actions" id="mobileSheetActions">
+        <button class="btn-mobile-route" id="btnMobileRoute">🚶 Прокласти маршрут</button>
+        <button class="btn-mobile-expand" id="btnMobileExpand">▲ Деталі</button>
+      </div>
+
+      <div class="sidebar-content" id="sidebarContent">
         <!-- NAVIGATION ROUTE CARD -->
         <div class="route-action-card" id="routeCard">
           <div style="display: flex; justify-content: space-between; align-items: center;">
