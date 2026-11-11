@@ -26,13 +26,72 @@ SkyGuard.Api = {
 
       if (response.ok) {
         const data = await response.json();
-        console.info("[SkyGuard API] Live shelters loaded from backend:", data.length);
+        // If data is RFC 7946 FeatureCollection from FastAPI
+        if (data && data.features) {
+          const mapped = data.features.map(f => ({
+            id: f.properties.id || f.id,
+            name: f.properties.name,
+            address: f.properties.address,
+            district: f.properties.district,
+            lat: f.geometry.coordinates[1],
+            lon: f.geometry.coordinates[0],
+            capacity: f.properties.capacity,
+            current_occupancy: f.properties.occupancy || 0,
+            status: f.properties.status === "FULL" ? "LIMITED" : f.properties.status,
+            wheelchair: f.properties.resources ? f.properties.resources.ramp : false,
+            generator: f.properties.resources ? f.properties.resources.generator : false,
+            starlink: f.properties.resources ? f.properties.resources.starlink : false,
+            water: f.properties.resources ? f.properties.resources.water : false,
+            confirmed_at: f.properties.status_updated_at || "Щойно (Live API)",
+            commander: { name: "Черговий комендант", phone: "+380 67 111 22 33", id: "DSNS-LV" },
+            lock: { id: "LOCK-ESP32-101", battery: "95%", rssi: "-65 dBm", state: "UNLOCKED" }
+          }));
+          console.info("[SkyGuard API] Live shelters loaded from backend:", mapped.length);
+          return mapped;
+        }
         return data;
       }
     } catch (err) {
       console.warn("[SkyGuard API] Backend offline or unreachable. Using embedded GeoJSON catalog.");
     }
     return SkyGuard.State.shelters;
+  },
+
+  /**
+   * Initializes live WebSocket connection for instant push updates (SG-21)
+   */
+  initWebSocket() {
+    try {
+      const wsUrl = "ws://localhost:8000/ws/v1/shelters";
+      const ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        console.info("[SkyGuard WS] Connected to live backend stream");
+        SkyGuard.UI.showToast("⚡ Підключено до Live WebSocket сервера (порт 8000)", "success");
+      };
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === "shelter.updated" && msg.shelter) {
+            const f = msg.shelter;
+            const updatedId = f.properties.id || f.id;
+            const existing = SkyGuard.State.getShelterById(updatedId);
+            if (existing) {
+              existing.status = (f.properties.status === "FULL" ? "LIMITED" : f.properties.status);
+              existing.current_occupancy = f.properties.occupancy || existing.current_occupancy;
+              existing.confirmed_at = "Щойно (Live WS)";
+              SkyGuard.Map.renderShelters();
+              if (SkyGuard.State.selectedShelterId === updatedId) {
+                SkyGuard.UI.openShelterDetails(updatedId);
+              }
+              SkyGuard.UI.showToast(`⚡ Live WebSocket: Статус ${existing.name} оновлено на ${existing.status}!`, "info");
+            }
+          }
+        } catch (err) {}
+      };
+      ws.onerror = () => {
+        console.debug("[SkyGuard WS] Offline (fallback to local mock events)");
+      };
+    } catch (e) {}
   },
 
   /**

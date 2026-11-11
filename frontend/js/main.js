@@ -26,6 +26,9 @@ SkyGuard.init = async function () {
   // 5. Setup Event Listeners
   SkyGuard.bindEvents();
 
+  // 6. Connect Live WebSocket (SG-21)
+  SkyGuard.Api.initWebSocket();
+
   console.info("✓ SkyGuard Client initialized successfully.");
 };
 
