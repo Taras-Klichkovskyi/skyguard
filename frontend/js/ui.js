@@ -245,7 +245,10 @@ SkyGuard.UI = {
       if (citizenBox) citizenBox.style.display = "flex";
     }
 
-    if (sidebar) sidebar.classList.add("open");
+    if (sidebar) {
+      sidebar.classList.add("open");
+      document.body.classList.add("sidebar-open");
+    }
   },
 
   /**
@@ -295,9 +298,45 @@ SkyGuard.UI = {
   /**
    * Closes details sidebar
    */
+  
+  /**
+   * Initializes touch swipe-down gestures for mobile bottom sheet
+   */
+  initMobileGestures() {
+    const handle = document.getElementById("sheetDragHandle");
+    const sidebar = document.getElementById("detailsSidebar");
+    if (!handle || !sidebar) return;
+
+    let startY = 0;
+    let currentY = 0;
+
+    handle.addEventListener("touchstart", (e) => {
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    handle.addEventListener("touchmove", (e) => {
+      currentY = e.touches[0].clientY;
+      const dy = currentY - startY;
+      if (dy > 0) {
+        sidebar.style.transform = `translateY(${dy}px)`;
+      }
+    }, { passive: true });
+
+    handle.addEventListener("touchend", () => {
+      const dy = currentY - startY;
+      sidebar.style.transform = "";
+      if (dy > 60) {
+        this.closeShelterDetails();
+      }
+    });
+  },
+
   closeShelterDetails() {
     const sidebar = document.getElementById("detailsSidebar");
-    if (sidebar) sidebar.classList.remove("open");
+    if (sidebar) {
+      sidebar.classList.remove("open");
+      document.body.classList.remove("sidebar-open");
+    }
     SkyGuard.Map.clearRouteLine();
   },
 

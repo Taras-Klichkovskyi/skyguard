@@ -41,6 +41,12 @@ SkyGuard.Map = {
     window.addEventListener("resize", () => {
       if (this.instance) this.instance.invalidateSize();
     });
+
+    this.instance.on("click", () => {
+      if (document.body.classList.contains("sidebar-open")) {
+        SkyGuard.UI.closeShelterDetails();
+      }
+    });
   },
 
   /**
@@ -145,7 +151,8 @@ SkyGuard.Map = {
       const icon = this.createMarkerIcon(shelter.status, isHighlighted);
       const marker = L.marker([shelter.lat, shelter.lon], { icon });
 
-      marker.on("click", () => {
+      marker.on("click", (e) => {
+        if (e && e.originalEvent) e.originalEvent.stopPropagation();
         SkyGuard.UI.openShelterDetails(shelter.id);
       });
 

@@ -210,6 +210,7 @@ SkyGuard.bindEvents = function () {
   const btnAddWitnessBtn = document.getElementById("btnAddWitnessBtn");
 
   if (closeSidebarBtn) closeSidebarBtn.addEventListener("click", () => SkyGuard.UI.closeShelterDetails());
+  SkyGuard.UI.initMobileGestures();
   if (requestTelemetryBtn) requestTelemetryBtn.addEventListener("click", () => SkyGuard.Security.triggerForbiddenIncident());
   if (openReportBtn) openReportBtn.addEventListener("click", () => SkyGuard.Crowdsource.openReportModal());
   if (btnToggleRoute) {

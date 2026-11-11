@@ -1679,3 +1679,520 @@ table.audit-table td {
   font-size: 0.9rem;
   font-weight: 700;
 }
+
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE ADAPTATION (iOS & Android Touch-Optimized)
+   Discipline: ПІС 2026 | Group: ОІ-33 | Team: corelogic
+   ========================================================================== */
+
+/* Safe area insets & mobile view height */
+body {
+  height: 100vh;
+  height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.sheet-drag-handle {
+  display: none;
+}
+
+/* Tablet & Large Mobile (max-width: 900px) */
+@media (max-width: 900px) {
+  header.app-header {
+    padding: 0 14px;
+  }
+  .brand-text .tagline {
+    display: none;
+  }
+  .header-center .logo-title {
+    font-size: 1.35rem;
+    letter-spacing: 0.14em;
+  }
+}
+
+/* Standard Mobile Phones (max-width: 768px) */
+@media (max-width: 768px) {
+  :root {
+    --header-height: 56px;
+  }
+
+  /* 1. Header mobile layout */
+  header.app-header {
+    height: var(--header-height);
+    padding: 0 10px;
+    padding-top: env(safe-area-inset-top, 0px);
+    gap: 6px;
+  }
+
+  .header-left {
+    gap: 8px;
+    flex: initial;
+  }
+
+  .brand {
+    gap: 6px;
+  }
+
+  .brand-logo {
+    width: 32px;
+    height: 32px;
+    font-size: 1.05rem;
+    border-radius: 8px;
+  }
+
+  .brand-title {
+    font-size: 0.84rem;
+    font-weight: 700;
+  }
+
+  .brand-text .tagline {
+    display: none;
+  }
+
+  .btn-alarm-trigger {
+    padding: 6px 9px;
+    font-size: 0.74rem;
+    border-radius: 8px;
+    gap: 5px;
+  }
+
+  .header-center {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header-center .logo-title {
+    font-size: 1.2rem;
+    letter-spacing: 0.1em;
+  }
+
+  .header-actions {
+    gap: 6px;
+    flex: initial;
+  }
+
+  .geo-status-pill {
+    padding: 5px 9px;
+    font-size: 0.74rem;
+    border-radius: 16px;
+    gap: 5px;
+  }
+
+  .btn-role-badge {
+    padding: 5px 9px;
+    font-size: 0.74rem;
+    border-radius: 16px;
+    gap: 5px;
+  }
+
+  .btn-role-badge .user-chevron {
+    display: none;
+  }
+
+  /* 2. Air Raid Alert Banner Mobile */
+  .alert-banner {
+    padding: 8px 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .alert-content {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .alert-pulse-icon {
+    font-size: 1.2rem;
+    margin-top: 1px;
+  }
+
+  .alert-text-block b {
+    font-size: 0.78rem;
+    display: block;
+    line-height: 1.2;
+    margin-bottom: 2px;
+  }
+
+  .alert-sub {
+    font-size: 0.7rem;
+    line-height: 1.25;
+  }
+
+  .btn-alert-dismiss {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    margin-top: 2px;
+  }
+
+  /* 3. Floating Filter Bar Mobile */
+  .floating-filters {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+    padding: 8px 10px;
+    gap: 7px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
+  }
+
+  .search-box input {
+    font-size: 16px !important; /* Prevents unwanted iOS Safari viewport auto-zoom */
+    height: 36px;
+    padding: 6px 10px 6px 32px;
+  }
+
+  .search-icon {
+    font-size: 0.8rem;
+    left: 9px;
+  }
+
+  .filter-chips {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .filter-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 5px 10px;
+    font-size: 0.74rem;
+    border-radius: 7px;
+  }
+
+  .feature-toggles {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .feature-toggles::-webkit-scrollbar {
+    display: none;
+  }
+
+  .toggle-chip {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+  }
+
+  /* 4. Bottom Stats Widget Mobile */
+  .map-stats-widget {
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    justify-content: space-between;
+    overflow-x: auto;
+    gap: 4px;
+    z-index: 500;
+  }
+
+  body.sidebar-open .map-stats-widget,
+  aside.details-sidebar.open ~ .map-stats-widget {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+    transition: all 0.2s ease;
+  }
+
+  /* 5. Details Sidebar as Native Bottom Sheet */
+  aside.details-sidebar {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100vw;
+    height: auto;
+    max-height: 80vh;
+    max-height: 80dvh;
+    border-radius: 20px 20px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.85);
+    transform: translateY(105%);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1050;
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+  }
+
+  aside.details-sidebar.open {
+    transform: translateY(0);
+  }
+
+  .sheet-drag-handle {
+    display: block;
+    width: 44px;
+    height: 5px;
+    background: #475569;
+    border-radius: 3px;
+    margin: 8px auto 2px auto;
+    cursor: grab;
+  }
+
+  .sidebar-header {
+    padding: 6px 16px 12px 16px;
+  }
+
+  .shelter-title {
+    font-size: 1.05rem;
+  }
+
+  .shelter-address {
+    font-size: 0.8rem;
+  }
+
+  .sidebar-content {
+    padding: 12px 16px;
+    gap: 12px;
+    max-height: calc(80vh - 80px);
+    max-height: calc(80dvh - 80px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .route-action-card {
+    padding: 10px;
+  }
+
+  .btn-toggle-route {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+
+  .amenities-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .amenity-item {
+    padding: 8px;
+    font-size: 0.74rem;
+  }
+
+  .btn-action-primary {
+    min-height: 44px;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+
+  /* 6. Leaflet Controls Mobile Positioning */
+  .leaflet-bottom.leaflet-right {
+    bottom: 50px !important;
+    right: 10px !important;
+  }
+
+  .leaflet-control-zoom a {
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    background-color: rgba(18, 22, 32, 0.92) !important;
+    color: #f3f5f9 !important;
+    border-color: var(--border-color) !important;
+  }
+
+  /* 7. Modals Mobile Optimization (Bottom Sheet Style) */
+  .modal-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90vh;
+    max-height: 90dvh;
+    border-radius: 20px 20px 0 0 !important;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    margin: 0;
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+  }
+
+  .modal-backdrop.active .modal-dialog {
+    transform: translateY(0);
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-header h2 {
+    font-size: 1.08rem;
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+    font-size: 0.86rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modal-footer button {
+    width: 100% !important;
+    min-height: 44px;
+    justify-content: center;
+    font-size: 0.92rem;
+    margin: 0 !important;
+  }
+
+  /* Role Switcher Modal */
+  .dialog-auth {
+    max-width: 100% !important;
+  }
+
+  .role-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .role-select-card {
+    padding: 12px;
+  }
+
+  .auth-tab-buttons {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+    padding-bottom: 4px;
+  }
+
+  .auth-tab-btn {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+  }
+
+  /* Audit Console Modal */
+  .dialog-audit {
+    max-height: 92vh;
+  }
+
+  .audit-filters-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .audit-filters-bar input,
+  .audit-filters-bar select,
+  .audit-filters-bar button {
+    width: 100%;
+    min-height: 40px;
+    font-size: 16px;
+  }
+
+  .audit-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.7rem;
+  }
+
+  /* Forbidden Incident Modal */
+  .dialog-forbidden {
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  /* 8. Toast Notifications Mobile */
+  .toast-container {
+    top: calc(var(--header-height) + 8px);
+    left: 10px;
+    right: 10px;
+    bottom: auto;
+    max-width: none;
+  }
+
+  .toast {
+    width: 100%;
+    font-size: 0.82rem;
+  }
+}
+
+/* Small Smart Phones (iPhone SE, Galaxy A-series, max-width: 480px) */
+@media (max-width: 480px) {
+  .brand-text {
+    display: none;
+  }
+
+  .btn-alarm-trigger #alarmBtnText {
+    display: none;
+  }
+
+  .btn-alarm-trigger {
+    padding: 6px 8px;
+    border-radius: 8px;
+  }
+
+  .header-center .logo-title {
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+  }
+
+  .geo-status-pill #consentStatusText {
+    font-size: 0.7rem;
+  }
+
+  .btn-role-badge .user-role-name {
+    max-width: 68px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+  }
+
+  .stat-item:nth-child(4) {
+    display: none; /* Hide Mode stat on extra-narrow screens to fit shelters, available, capacity */
+  }
+}
+
+/* Extra Small Phones (max-width: 360px) */
+@media (max-width: 360px) {
+  .geo-status-pill #consentStatusText {
+    display: none;
+  }
+  .geo-status-pill {
+    padding: 6px;
+    border-radius: 50%;
+  }
+  .header-center .logo-title {
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+  }
+}
