@@ -195,14 +195,25 @@ main.app-main {
   position: relative;
   display: flex;
   overflow: hidden;
+  height: calc(100vh - var(--header-height));
+  width: 100vw;
 }
 
 #map {
-  flex: 1;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   height: 100%;
   width: 100%;
   background-color: #0b0e14;
   z-index: 1;
+}
+
+/* OpenStreetMap Dark OLED Theme Filter (Zero API keys, zero watermarks) */
+.leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
 
 /* FLOATING FILTER BAR */

@@ -10,24 +10,32 @@ window.SkyGuard = window.SkyGuard || {};
 SkyGuard.init = async function () {
   console.info("🛡️ Initializing SkyGuard Frontend Web Client v2.1.0...");
 
-  // 1. Initialize State
+  // 1. Initialize State with 10 default Lviv shelters
   SkyGuard.State.init();
 
-  // 2. Fetch Shelters (Backend API with automatic local fallback)
-  const shelters = await SkyGuard.Api.fetchShelters();
-  SkyGuard.State.shelters = shelters;
-
-  // 3. Initialize Map & Markers
+  // 2. Initialize Map & Markers immediately (instant render, zero delay!)
   SkyGuard.Map.init();
 
-  // 4. Update Stats Counter
+  // 3. Update Stats Counter
   SkyGuard.UI.updateStats();
 
-  // 5. Setup Event Listeners
+  // 4. Setup Event Listeners
   SkyGuard.bindEvents();
 
-  // 6. Connect Live WebSocket (SG-21)
+  // 5. Connect Live WebSocket (SG-21) in background
   SkyGuard.Api.initWebSocket();
+
+  // 6. Asynchronously check live backend in background
+  try {
+    const liveShelters = await SkyGuard.Api.fetchShelters();
+    if (liveShelters && liveShelters.length > 0) {
+      SkyGuard.State.shelters = liveShelters;
+      SkyGuard.Map.renderShelters();
+      SkyGuard.UI.updateStats();
+    }
+  } catch (err) {
+    console.debug("[SkyGuard] Backend offline, continuing in local mode.");
+  }
 
   console.info("✓ SkyGuard Client initialized successfully.");
 };

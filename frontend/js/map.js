@@ -32,6 +32,15 @@ SkyGuard.Map = {
 
     this.updateUserMarker();
     this.renderShelters();
+
+    // Ensure Leaflet calculates exact viewport dimensions immediately
+    setTimeout(() => {
+      if (this.instance) this.instance.invalidateSize();
+    }, 200);
+
+    window.addEventListener("resize", () => {
+      if (this.instance) this.instance.invalidateSize();
+    });
   },
 
   /**

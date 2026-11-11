@@ -14,9 +14,10 @@ SkyGuard.Config = {
   // Map Initial Coordinates (Lviv City Center)
   MAP_CENTER: [49.8397, 24.0297],
   MAP_DEFAULT_ZOOM: 13.5,
-  MAP_TILE_LAYER: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-  MAP_SUBDOMAINS: "abcd",
+  MAP_TILE_LAYER: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  MAP_SUBDOMAINS: "abc",
   MAP_MAX_ZOOM: 19,
+  MAP_ATTRIBUTION: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 
   // Default User Geolocation (Rynok Square, Lviv)
   DEFAULT_USER_LOCATION: {
