@@ -1721,21 +1721,26 @@ body {
     --header-height: 56px;
   }
 
-  /* 1. Header mobile layout */
+  /* 1. Header mobile layout (Ultra-compact touch layout) */
   header.app-header {
     height: var(--header-height);
     padding: 0 10px;
     padding-top: env(safe-area-inset-top, 0px);
-    gap: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0;
   }
 
   .header-left {
-    gap: 8px;
-    flex: initial;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
   }
 
   .brand {
-    gap: 6px;
+    gap: 0;
   }
 
   .brand-logo {
@@ -1745,53 +1750,92 @@ body {
     border-radius: 8px;
   }
 
-  .brand-title {
-    font-size: 0.84rem;
-    font-weight: 700;
-  }
-
-  .brand-text .tagline {
-    display: none;
+  .brand-text {
+    display: none !important;
   }
 
   .btn-alarm-trigger {
-    padding: 6px 9px;
-    font-size: 0.74rem;
-    border-radius: 8px;
-    gap: 5px;
+    width: 34px;
+    height: 34px;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem !important;
+  }
+
+  .btn-alarm-trigger #alarmBtnText {
+    display: none !important;
   }
 
   .header-center {
-    flex: 1;
+    flex: 1 1 auto;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     min-width: 0;
+    padding: 0 4px;
   }
 
   .header-center .logo-title {
-    font-size: 1.2rem;
-    letter-spacing: 0.1em;
+    font-size: 1.15rem !important;
+    letter-spacing: 0.1em !important;
+    font-weight: 900;
+    margin: 0;
+    white-space: nowrap;
   }
 
   .header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     gap: 6px;
-    flex: initial;
+    flex: 0 0 auto;
   }
 
+  /* Geolocation: JUST A COLORED PULSING DOT on mobile */
   .geo-status-pill {
-    padding: 5px 9px;
-    font-size: 0.74rem;
-    border-radius: 16px;
-    gap: 5px;
+    width: 34px;
+    height: 34px;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-width: 2px !important;
   }
 
+  .geo-status-pill #consentStatusText {
+    display: none !important;
+  }
+
+  .geo-pulse-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  /* Profile badge: JUST AN ICON WITHOUT NAME on mobile */
   .btn-role-badge {
-    padding: 5px 9px;
-    font-size: 0.74rem;
-    border-radius: 16px;
-    gap: 5px;
+    width: 34px;
+    height: 34px;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
   }
 
+  .btn-role-badge .user-avatar {
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .btn-role-badge .user-role-name,
   .btn-role-badge .user-chevron {
-    display: none;
+    display: none !important;
   }
 
   /* 2. Air Raid Alert Banner Mobile */
@@ -2264,34 +2308,9 @@ body {
 
 /* Small Smart Phones (iPhone SE, Galaxy A-series, max-width: 480px) */
 @media (max-width: 480px) {
-  .brand-text {
-    display: none;
-  }
-
-  .btn-alarm-trigger #alarmBtnText {
-    display: none;
-  }
-
-  .btn-alarm-trigger {
-    padding: 6px 8px;
-    border-radius: 8px;
-  }
-
   .header-center .logo-title {
-    font-size: 1.05rem;
-    letter-spacing: 0.08em;
-  }
-
-  .geo-status-pill #consentStatusText {
-    font-size: 0.7rem;
-  }
-
-  .btn-role-badge .user-role-name {
-    max-width: 68px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.72rem;
+    font-size: 1.05rem !important;
+    letter-spacing: 0.06em !important;
   }
 
   .stat-item:nth-child(4) {
@@ -2301,15 +2320,44 @@ body {
 
 /* Extra Small Phones (max-width: 360px) */
 @media (max-width: 360px) {
-  .geo-status-pill #consentStatusText {
-    display: none;
+  header.app-header {
+    padding: 0 6px;
+    gap: 2px;
   }
-  .geo-status-pill {
-    padding: 6px;
-    border-radius: 50%;
+
+  .header-left,
+  .header-actions {
+    gap: 4px;
   }
-  .header-center .logo-title {
+
+  .brand-logo,
+  .btn-alarm-trigger,
+  .geo-status-pill,
+  .btn-role-badge {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+  }
+
+  .brand-logo {
     font-size: 0.95rem;
-    letter-spacing: 0.05em;
+  }
+
+  .btn-alarm-trigger {
+    font-size: 1.0rem !important;
+  }
+
+  .btn-role-badge .user-avatar {
+    font-size: 1.0rem;
+  }
+
+  .geo-pulse-dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .header-center .logo-title {
+    font-size: 0.95rem !important;
+    letter-spacing: 0.04em !important;
   }
 }

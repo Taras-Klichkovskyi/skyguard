@@ -1,7 +1,23 @@
 from functools import lru_cache
+import os
 
 from pydantic import model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+try:
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+except ImportError:
+    from pydantic import BaseModel
+    def SettingsConfigDict(**kwargs):
+        return kwargs
+    class BaseSettings(BaseModel):
+        model_config = {}
+        def __init__(self, **kwargs):
+            vals = {}
+            for k in self.__class__.model_fields:
+                v = os.getenv(k.upper()) or os.getenv(k)
+                if v is not None:
+                    vals[k] = v
+            vals.update(kwargs)
+            super().__init__(**vals)
 
 DEV_JWT_SECRET = "dev-only-secret-change-me-before-any-real-deployment"
 
