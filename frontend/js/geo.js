@@ -49,11 +49,12 @@ SkyGuard.Geo = {
 
   /**
    * Calculates actual walking route along street sidewalks via OpenStreetMap OSRM routing service
+   * Uses routing.openstreetmap.de routed-foot engine (full coverage of Ukraine / Lviv)
    * Falls back to straight Haversine line if offline
    */
   async getWalkingRoute(lat1, lon1, lat2, lon2) {
     try {
-      const url = `https://router.project-osrm.org/route/v1/walking/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`;
+      const url = `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -68,7 +69,7 @@ SkyGuard.Geo = {
         }
       }
     } catch (e) {
-      console.debug("[SkyGuard Router] OSRM offline, falling back to Haversine straight line");
+      console.warn("[SkyGuard Router] Routing service offline, falling back to Haversine line", e);
     }
 
     // Mathematical Haversine straight-line fallback
