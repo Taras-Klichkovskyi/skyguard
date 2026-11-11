@@ -58,6 +58,23 @@ SkyGuard.Api = {
   },
 
   /**
+   * Broadcasts official status change to backend API (SG-21)
+   */
+  async sendShelterStatusUpdate(shelterId, status) {
+    try {
+      const token = SkyGuard.Security ? SkyGuard.Security.token : localStorage.getItem("skyguard_jwt_token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      await fetch(`${this.baseUrl}/shelters/${shelterId}/status`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ status })
+      }).catch(() => {});
+    } catch (e) {}
+  },
+
+  /**
    * Initializes live WebSocket connection for instant push updates (SG-21)
    */
   initWebSocket() {

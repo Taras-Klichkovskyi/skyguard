@@ -307,6 +307,14 @@ SkyGuard.UI = {
     shelter.status = newStatus;
     shelter.confirmed_at = "Щойно (ДСНС)";
 
+    // 1. Instant sync across tabs in same browser (DSNS tab -> Citizen tab)
+    SkyGuard.State.broadcastShelterUpdate(shelter.id, newStatus, shelter.confirmed_at);
+
+    // 2. Transmit to live backend API & WebSocket stream
+    if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
+      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, newStatus);
+    }
+
     SkyGuard.Map.renderShelters();
     this.updateStats();
     this.openShelterDetails(shelter.id);

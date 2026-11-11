@@ -17,5 +17,5 @@ USER app
 
 EXPOSE 8000
 
-# Міграції при старті, потім API
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Міграції та засів укриттів при старті, потім API
+CMD ["sh", "-c", "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
