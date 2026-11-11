@@ -124,11 +124,11 @@ SkyGuard.Crowdsource = {
 
     const maxAllowed = SkyGuard.Config.DQ_RULES.DQ1_MAX_DISTANCE_METRES;
 
-    // Enforce Rule DQ-1: Reject if distance > 100 metres
+    // Enforce Rule DQ-1: Reject if distance > 100 metres (Server Contract: GEOLOCATION_OUT_OF_BOUNDS)
     if (dist > maxAllowed) {
-      SkyGuard.Audit.logEvent("DQ_VIOLATION_HAVERSINE", `shelter/${shelter.id}`, "PUBLIC", 422);
+      SkyGuard.Audit.logEvent("FAILED_DQ_422", `shelter/${shelter.id}`, "PUBLIC", 422);
       SkyGuard.UI.showToast(
-        `⛔ Помилка HTTP 422: Відхилено за правилом DQ-1 (дистанція ${SkyGuard.Geo.formatDistance(dist)} > ${maxAllowed} м)!`,
+        `⛔ Помилка HTTP 422 GEOLOCATION_OUT_OF_BOUNDS: Відхилено за правилом DQ-1 (дистанція ${SkyGuard.Geo.formatDistance(dist)} > ${maxAllowed} м)!`,
         "error"
       );
       const modal = document.getElementById("reportModal");

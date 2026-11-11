@@ -64,20 +64,25 @@ SkyGuard.Api = {
 
   /**
    * Synchronizes user consent record with backend (Data Governance L1/L2)
-   * Target endpoint: POST /api/v1/consent
+   * Target endpoint: POST /api/v1/consents (Purposes: ROUTE_GPS, REPORT_GEOFENCE, SOS)
    */
-  async updateConsent(consentGranted) {
+  async updateConsent(consentGranted, purpose = "ROUTE_GPS") {
     try {
-      await fetch(`${this.baseUrl}/consent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: "citizen_01",
-          consent_type: "GEOLOCATION_TRACKING",
-          granted: consentGranted,
-          timestamp: new Date().toISOString()
-        })
-      });
+      if (consentGranted) {
+        await fetch(`${this.baseUrl}/consents`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            purpose: purpose,
+            granted: true,
+            timestamp: new Date().toISOString()
+          })
+        });
+      } else {
+        await fetch(`${this.baseUrl}/consents/${purpose}`, {
+          method: "DELETE"
+        });
+      }
     } catch (e) {
       // Offline fallback silent
     }

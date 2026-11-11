@@ -58,7 +58,7 @@ SkyGuard.Audit = {
       time: "2026-11-10T15:02:18Z",
       actor: "citizen_02",
       role: "Citizen",
-      action: "DQ_VIOLATION_HAVERSINE",
+      action: "FAILED_DQ_422",
       resource: "shelter/SH-LVIV-008",
       cls: "PUBLIC",
       status: 422,
