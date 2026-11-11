@@ -1,5 +1,7 @@
 """Ендпоінти для отримання та тестування статусу повітряної тривоги (SG-23)."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
@@ -25,7 +27,9 @@ class SimulateAlertRequest(BaseModel):
 
 
 @router.get("/status", response_model=AlertStatusResponse)
-async def get_alerts_status(settings: Settings = Depends(get_settings)) -> dict:
+async def get_alerts_status(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
     """Отримати поточний статус повітряної тривоги (Львів та область).
 
     Джерело: alerts.in.ua. У разі відсутності токена повертає стан симулятора.
@@ -46,7 +50,9 @@ async def simulate_alert_state(
 
 
 @router.post("/check-now", response_model=AlertStatusResponse)
-async def force_check_alerts(settings: Settings = Depends(get_settings)) -> dict:
+async def force_check_alerts(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
     """Примусовий запит до alerts.in.ua просто зараз (якщо токен задано)."""
     token_configured = bool((settings.alerts_in_ua_token or "").strip())
     if token_configured:

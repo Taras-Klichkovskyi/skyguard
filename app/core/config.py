@@ -2,6 +2,7 @@ import os
 from functools import lru_cache
 
 from pydantic import model_validator
+
 try:
     from pydantic_settings import BaseSettings, SettingsConfigDict
 except ImportError:
