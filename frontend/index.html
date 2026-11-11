@@ -24,72 +24,41 @@
     <button class="btn-alert-dismiss" id="btnDismissAlert">✕ Закрити сповіщення</button>
   </div>
 
-  <!-- APP HEADER (Clean Modern Architecture) -->
+  <!-- APP HEADER (Clean Municipal Design) -->
   <header class="app-header">
-    <div class="brand">
-      <div class="brand-logo">🛡️</div>
-      <div class="brand-text">
-        <div class="brand-title-row">
-          <h1>SkyGuard</h1>
-          <span class="badge-tag">Львів · Цивільний захист</span>
+    <div class="header-left">
+      <div class="brand">
+        <div class="brand-logo">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-title">Львів</div>
+          <div class="tagline">Цивільний захист</div>
         </div>
-        <div class="tagline">Платформа керованого обміну геоданими цивільного захисту</div>
       </div>
+
+      <!-- Quick Air Raid Simulation for Citizen / Simple User -->
+      <button class="btn-alarm-trigger" id="btnAlarmTrigger" title="Симуляція сигналу повітряної тривоги">
+        <span class="siren-icon">🚨</span>
+        <span id="alarmBtnText">Симуляція тривоги</span>
+      </button>
     </div>
 
+    <!-- CENTER TITLE: SKYGUARD -->
     <div class="header-center">
-      <div class="status-indicator-pill" id="headerStatusPill">
-        <span class="status-pulse-dot"></span>
-        <span id="headerStatusText">Львів · Штатний режим</span>
-      </div>
-
-      <div class="consent-indicator granted" id="consentBtn" title="Керування згодою на обробку GPS-даних (ст. 11 ЗУ)">
-        <span class="status-dot"></span>
-        <span id="consentStatusText">Згода на геодані: L2 Активна</span>
-      </div>
+      <h1 class="logo-title">SKYGUARD</h1>
     </div>
 
+    <!-- RIGHT ACTIONS: GEOLOCATION & ROLE BADGE -->
     <div class="header-actions">
-      <!-- Quick Test / Simulation Menu Dropdown -->
-      <div class="menu-dropdown-wrap">
-        <button class="btn-menu-trigger" id="btnToolsMenu" title="Лабораторні інструменти перевірки та тестування">
-          <span class="icon">🧪</span>
-          <span>Лабораторія тестування</span>
-          <span class="arrow">▾</span>
-        </button>
-        <div class="dropdown-panel" id="toolsDropdown">
-          <div class="dropdown-header">ІНСТРУМЕНТИ ТЕСТУВАННЯ (SG-9 / SG-11)</div>
-          <button class="dropdown-item" id="btnAlarmTrigger">
-            <span class="item-icon">🚨</span>
-            <div class="item-content">
-              <b>Сигнал «Повітряна тривога»</b>
-              <span>Перемикання карти в режим екстреної евакуації</span>
-            </div>
-          </button>
-          <button class="dropdown-item" id="openAuditBtn">
-            <span class="item-icon">📜</span>
-            <div class="item-content">
-              <b>Консоль аудитора SHA-256</b>
-              <span>Незмінний журнал транзакцій та перевірка ланцюга</span>
-            </div>
-          </button>
-          <button class="dropdown-item" id="btnExportGeoJson">
-            <span class="item-icon">📥</span>
-            <div class="item-content">
-              <b>Експорт GeoJSON (RFC 7946)</b>
-              <span>Завантаження відкритого шару укриттів</span>
-            </div>
-          </button>
-        </div>
-      </div>
+      <!-- Geolocation & Consent Toggle Pill (Click transmits GPS location immediately) -->
+      <button class="geo-status-pill granted" id="consentBtn" title="Клікніть, щоб передати точні GPS-координати та оновити маршрут до найближчого укриття">
+        <span class="geo-pulse-dot"></span>
+        <span id="consentStatusText">Геолокація активна</span>
+      </button>
 
-      <!-- Professional User / Role Auth Button -->
-      <button class="btn-user-profile" id="btnOpenAuthModal" title="Авторизація користувача та зміна ролі (RBAC)">
+      <!-- Compact Role Badge (Click opens RBAC Role Switcher & Password modal) -->
+      <button class="btn-role-badge" id="btnOpenAuthModal" title="Авторизація / Зміна ролі (RBAC)">
         <span class="user-avatar" id="headerUserAvatar">👤</span>
-        <div class="user-meta">
-          <span class="user-role-name" id="headerUserRoleName">Громадянин</span>
-          <span class="user-role-badge" id="headerUserRoleBadge">L1 PUBLIC</span>
-        </div>
+        <span class="user-role-name" id="headerUserRoleName">Громадянин</span>
         <span class="user-chevron">▾</span>
       </button>
     </div>
@@ -99,11 +68,6 @@
   <main class="app-main">
     <!-- LEAFLET MAP -->
     <div id="map"></div>
-
-    <!-- FLOATING GPS BUTTON ON MAP -->
-    <button class="btn-locate-me" id="btnLocateMe" title="Визначити мою точну GPS-позицію через браузер">
-      <span>🎯</span>
-    </button>
 
     <!-- FLOATING FILTER & SEARCH PANEL -->
     <div class="floating-filters">
@@ -143,7 +107,7 @@
       </div>
       <div class="stat-item">
         <span>🔒 Режим:</span>
-        <span class="stat-val" style="color: #60a5fa;" id="statsMode">Штатний (L1/L2)</span>
+        <span class="stat-val" style="color: #60a5fa;" id="statsMode">Штатний режим</span>
       </div>
     </div>
 
@@ -204,16 +168,16 @@
         <div class="info-section">
           <div class="section-label">
             <span>Обладнання та безпека</span>
-            <span class="classification-tag tag-l1">L1 PUBLIC</span>
+            <span class="classification-tag tag-l1">Інфраструктура</span>
           </div>
           <div class="amenities-grid" id="detailAmenitiesGrid"></div>
         </div>
 
-        <!-- COMMANDER CONTACTS (L2 INTERNAL) -->
+        <!-- COMMANDER CONTACTS -->
         <div class="info-section">
           <div class="section-label">
             <span>Відповідальний комендант</span>
-            <span class="classification-tag tag-l2" id="commanderClassTag">L2 INTERNAL</span>
+            <span class="classification-tag tag-l2" id="commanderClassTag">Службовий контакт</span>
           </div>
           <div id="commanderDetailsContent">
             <div style="font-weight: 600;" id="detailCommanderName">Ковальчук П. О.</div>
@@ -222,11 +186,11 @@
           </div>
         </div>
 
-        <!-- TELEMETRY / SMART LOCK (L3 CONFIDENTIAL) -->
+        <!-- TELEMETRY / SMART LOCK -->
         <div class="info-section">
           <div class="section-label">
             <span>Телеметрія смарт-замка (IoT)</span>
-            <span class="classification-tag tag-l3">L3 CONFIDENTIAL</span>
+            <span class="classification-tag tag-l3">Службовий доступ</span>
           </div>
           <div id="telemetryDetailsContent">
             <div style="font-size: 0.85rem; font-family: var(--font-mono);" id="detailLockStatus">Стан: UNLOCKED · Батарея: 94%</div>
@@ -243,7 +207,7 @@
           </button>
           <button class="btn-action-telemetry" id="requestTelemetryBtn">
             <span>🔐</span>
-            <span>Телеметрія замка (Тест 403 Forbidden)</span>
+            <span>Телеметрія замка (Тест доступу 403)</span>
           </button>
         </div>
 
@@ -251,7 +215,7 @@
         <div class="role-control-card dsns-card" id="dsnsActionsBox" style="display: none;">
           <div class="role-card-banner">
             <span>🚒 Панель оперативного чергового ДСНС</span>
-            <span class="classification-tag tag-l3">L3 CONFIDENTIAL</span>
+            <span class="classification-tag tag-l3">Оперативний доступ</span>
           </div>
           <p class="role-card-hint">Вам надано доступ до прямих контактів коменданта та примусового керування станом захисної споруди по місту.</p>
           <div class="role-btn-row">
@@ -264,7 +228,7 @@
         <div class="role-control-card manager-card" id="managerActionsBox" style="display: none;">
           <div class="role-card-banner">
             <span>🏢 Керування коменданта споруди</span>
-            <span class="classification-tag tag-l2">L2 INTERNAL</span>
+            <span class="classification-tag tag-l2">Комендант об'єкта</span>
           </div>
           <p class="role-card-hint">Офіційне оновлення статусу та заповненості застосовується миттєво без потреби збору кворуму.</p>
           <div class="manager-form-grid">
@@ -285,7 +249,7 @@
     </aside>
   </main>
 
-  <!-- MODAL 1: GEOLOCATION CONSENT DIALOG (Data Governance L2) -->
+  <!-- MODAL 1: GEOLOCATION CONSENT DIALOG -->
   <div class="modal-backdrop" id="consentModal">
     <div class="modal-dialog">
       <div class="modal-header">
@@ -293,20 +257,20 @@
         <button class="btn-close" id="closeConsentModalBtn">&times;</button>
       </div>
       <div class="modal-body">
-        <p>Відповідно до <b>статті 11 Закону України «Про захист персональних даних»</b> та стандартів <b>Data Governance by Design</b>, системі SkyGuard потрібна ваша попередня згода для обробки поточної геолокації.</p>
+        <p>Відповідно до <b>статті 11 Закону України «Про захист персональних даних»</b>, системі потрібна ваша дія для визначення та обробки поточної геолокації.</p>
         
         <div style="background: var(--bg-card); padding: 14px; border-radius: 10px; border: 1px solid var(--border-color);">
           <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">🎯 Мета обробки:</div>
-          <div style="font-size: 0.82rem;">Автоматичний розрахунок відстані до найближчого укриття та верифікація краудсорсингових звітів за формулою Haversine (правило якості DQ-1: радіус ≤ 100 м).</div>
+          <div style="font-size: 0.82rem;">Автоматичний розрахунок безпечного пішого маршруту до найближчого відчиненого укриття та перевірка свіжості спостережень поруч (≤ 100 м).</div>
         </div>
 
         <p style="font-size: 0.8rem; color: var(--text-dim);">
-          🔒 <b>Принцип приватності:</b> Ваші координати не передаються третім особам, не зберігаються в первинному вигляді та анонімізуються в журналі аудиту до рівня мережі (/24). Ви можете відкликати згоду в будь-який момент.
+          🔒 <b>Принцип приватності:</b> Ваші координати не зберігаються у відкритому вигляді на сервері та не передаються третім особам. Ви можете увімкнути чи вимкнути геолокацію в будь-який момент.
         </p>
       </div>
       <div class="modal-footer">
-        <button class="btn-secondary" id="btnDenyConsent">Відхилити (Режим L1 PUBLIC)</button>
-        <button class="btn-primary" id="btnGrantConsent">Надати згоду (Режим L2)</button>
+        <button class="btn-secondary" id="btnDenyConsent">Вимкнути геолокацію</button>
+        <button class="btn-primary" id="btnGrantConsent">Дозволити обробку GPS</button>
       </div>
     </div>
   </div>
@@ -361,8 +325,8 @@
         <span class="forbidden-code-badge">HTTP 403</span>
       </div>
       <div class="modal-body">
-        <p><b style="color: #f87171;">Відмовлено в доступі за політикою Data Governance (RBAC)!</b></p>
-        <p>Ваша поточна роль (<b id="forbiddenCurrentRole">Citizen</b>) не володіє достатнім рівнем довіри для доступу до ресурсів класу <b>CONFIDENTIAL (L3)</b> або <b>SENSITIVE (L4)</b>.</p>
+        <p><b style="color: #f87171;">Відмовлено в доступі за політикою безпеки (RBAC)!</b></p>
+        <p>Ваша поточна роль (<b id="forbiddenCurrentRole">Громадянин</b>) не володіє правами для керування службовими замками укриття. Даний функціонал доступний лише офіцерам ДСНС або відповідальним комендантам.</p>
 
         <div class="incident-box">
           <div><b>ІНЦИДЕНТ БЕЗПЕКИ ЗАРЕЄСТРОВАНО:</b></div>
@@ -466,16 +430,16 @@
                 <span class="avatar-icon">👤</span>
                 <div>
                   <div class="card-role-title">Громадянин (Citizen)</div>
-                  <span class="classification-tag tag-l1">L1 PUBLIC</span>
+                  <span class="role-access-type">Базовий доступ</span>
                 </div>
               </div>
               <ul class="role-feature-list">
                 <li>● Публічний реєстр споруд та SafeRoute</li>
-                <li>● Подання звіту свідка (перевірка DQ-1 ≤ 100 м)</li>
-                <li>● Керування згодою на GPS (L1 / L2)</li>
-                <li class="restricted-item">✕ Контакти комендантів та замок (403)</li>
+                <li>● Подання звіту свідка поруч з укриттям (≤ 100 м)</li>
+                <li>● Керування власною геолокацією</li>
+                <li class="restricted-item">✕ Керування замком та контакти ДСНС (потрібен пароль)</li>
               </ul>
-              <button class="btn-switch-role">Активувати роль</button>
+              <button class="btn-switch-role" data-role="CITIZEN">Вільний доступ</button>
             </div>
 
             <!-- DSNS Operator -->
@@ -484,7 +448,7 @@
                 <span class="avatar-icon">🚒</span>
                 <div>
                   <div class="card-role-title">Оператор ДСНС (DSNS)</div>
-                  <span class="classification-tag tag-l3">L3 CONFIDENTIAL</span>
+                  <span class="role-access-type role-access-secure">Службовий доступ</span>
                 </div>
               </div>
               <ul class="role-feature-list">
@@ -493,7 +457,7 @@
                 <li>● Примусова зміна статусу будь-якого укриття</li>
                 <li>● Телеметрія та стан живлення смарт-замків</li>
               </ul>
-              <button class="btn-switch-role">Активувати роль</button>
+              <button class="btn-switch-role btn-privileged-role" data-role="OPERATOR">🔑 Увійти з паролем</button>
             </div>
 
             <!-- Shelter Manager -->
@@ -502,7 +466,7 @@
                 <span class="avatar-icon">🏢</span>
                 <div>
                   <div class="card-role-title">Комендант укриття</div>
-                  <span class="classification-tag tag-l2">L2 INTERNAL</span>
+                  <span class="role-access-type role-access-manager">Комендант</span>
                 </div>
               </div>
               <ul class="role-feature-list">
@@ -511,7 +475,7 @@
                 <li>● Управління інфраструктурою життєзабезпечення</li>
                 <li>● Сервісний доступ до замка свого об'єкта</li>
               </ul>
-              <button class="btn-switch-role">Активувати роль</button>
+              <button class="btn-switch-role btn-privileged-role" data-role="MANAGER">🔑 Увійти з паролем</button>
             </div>
 
             <!-- Security Auditor -->
@@ -520,7 +484,7 @@
                 <span class="avatar-icon">🛡️</span>
                 <div>
                   <div class="card-role-title">Аудитор безпеки</div>
-                  <span class="classification-tag tag-l3">L3 AUDIT</span>
+                  <span class="role-access-type role-access-audit">Аудит</span>
                 </div>
               </div>
               <ul class="role-feature-list">
@@ -529,7 +493,7 @@
                 <li>● Аналіз інцидентів відхилення 401/403/422</li>
                 <li>● Експорт повного звіту про транзакції JSON</li>
               </ul>
-              <button class="btn-switch-role">Активувати роль</button>
+              <button class="btn-switch-role btn-privileged-role" data-role="AUDITOR">🔑 Увійти з паролем</button>
             </div>
 
             <!-- Verified Volunteer -->
@@ -538,7 +502,7 @@
                 <span class="avatar-icon">🦺</span>
                 <div>
                   <div class="card-role-title">Волонтер (Volunteer)</div>
-                  <span class="classification-tag tag-l2">L2 VERIFIED</span>
+                  <span class="role-access-type role-access-volunteer">Верифікований</span>
                 </div>
               </div>
               <ul class="role-feature-list">
@@ -547,7 +511,25 @@
                 <li>● Валідація генератора, зв'язку Starlink та води</li>
                 <li>● Підтвердження безпечності підходів</li>
               </ul>
-              <button class="btn-switch-role">Активувати роль</button>
+              <button class="btn-switch-role btn-privileged-role" data-role="VOLUNTEER">🔑 Увійти з паролем</button>
+            </div>
+          </div>
+
+          <!-- Inline Password Verification Box for Privileged Roles -->
+          <div id="rolePasswordVerifyBox" style="display: none; margin-top: 18px; padding: 14px; background: #161f30; border: 1px solid #38bdf8; border-radius: 10px;">
+            <div style="font-weight: 700; color: #38bdf8; font-size: 0.88rem; margin-bottom: 6px;" id="verifyRoleTitle">
+              Підтвердження службового доступу
+            </div>
+            <p style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 10px;">
+              Для переходу в цей службовий режим введіть пароль (демо-пароль: <code>skyguard-demo</code>):
+            </p>
+            <div style="display: flex; gap: 8px;">
+              <input type="password" id="inputRoleVerifyPass" class="auth-text-field" placeholder="skyguard-demo" style="flex: 1;" value="skyguard-demo">
+              <button class="btn-primary" id="btnConfirmRolePass" style="padding: 8px 18px; white-space: nowrap;">Підтвердити</button>
+              <button class="btn-secondary" id="btnCancelRolePass" style="padding: 8px 14px;">Скасувати</button>
+            </div>
+            <div id="rolePassError" style="display: none; color: #f87171; font-size: 0.75rem; margin-top: 6px;">
+              Невірний пароль. Для тестування використовуйте <code>skyguard-demo</code>.
             </div>
           </div>
         </div>

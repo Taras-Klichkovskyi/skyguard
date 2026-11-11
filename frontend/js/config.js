@@ -35,12 +35,12 @@ SkyGuard.Config = {
 
   // Available User Roles (RBAC Matrix)
   ROLES: {
-    ANONYMOUS: { id: "ANONYMOUS", label: "Анонімний гість", clearance: "L1_PUBLIC", avatar: "🌐", badge: "L1 PUBLIC" },
-    CITIZEN: { id: "CITIZEN", label: "Громадянин (Citizen)", clearance: "L1_PUBLIC", avatar: "👤", badge: "L1 PUBLIC" },
-    VOLUNTEER: { id: "VOLUNTEER", label: "Волонтер (Volunteer)", clearance: "L2_INTERNAL", avatar: "🦺", badge: "L2 VERIFIED" },
-    MANAGER: { id: "MANAGER", label: "Комендант (Shelter Manager)", clearance: "L2_INTERNAL", avatar: "🏢", badge: "L2 MANAGER" },
-    OPERATOR: { id: "OPERATOR", label: "Офіцер ДСНС (DSNS Operator)", clearance: "L3_CONFIDENTIAL", avatar: "🚒", badge: "L3 CONFIDENTIAL" },
-    AUDITOR: { id: "AUDITOR", label: "Аудитор безпеки (Security Auditor)", clearance: "L3_CONFIDENTIAL", avatar: "🛡️", badge: "L3 AUDIT" }
+    ANONYMOUS: { id: "ANONYMOUS", label: "Анонімний гість", clearance: "L1_PUBLIC", avatar: "🌐", badge: "Гість" },
+    CITIZEN: { id: "CITIZEN", label: "Громадянин", clearance: "L1_PUBLIC", avatar: "👤", badge: "Громадянин" },
+    VOLUNTEER: { id: "VOLUNTEER", label: "Волонтер", clearance: "L2_INTERNAL", avatar: "🦺", badge: "Волонтер" },
+    MANAGER: { id: "MANAGER", label: "Комендант", clearance: "L2_INTERNAL", avatar: "🏢", badge: "Комендант" },
+    OPERATOR: { id: "OPERATOR", label: "Офіцер ДСНС", clearance: "L3_CONFIDENTIAL", avatar: "🚒", badge: "ДСНС" },
+    AUDITOR: { id: "AUDITOR", label: "Аудитор", clearance: "L3_CONFIDENTIAL", avatar: "🛡️", badge: "Аудитор" }
   },
 
   // Embedded Realistic Lviv Shelters Catalog (RFC 7946 GeoJSON Standard)

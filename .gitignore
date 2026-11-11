@@ -3,6 +3,11 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.*
+!.env.example
+*.token
+*secrets*
+alerts_token.txt
 .pytest_cache/
 .ruff_cache/
 .coverage

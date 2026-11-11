@@ -6,9 +6,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, consents, health, shelters, ws
+from app.api.routes import alerts, auth, consents, health, shelters, ws
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
+from app.services import alerts as alerts_service
 from app.services import sweeper
 
 settings = get_settings()
@@ -16,16 +17,22 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    task = (
+    sweeper_task = (
         asyncio.create_task(sweeper.run_forever(settings.sweep_interval_s))
         if settings.sweep_interval_s > 0
         else None
     )
+    alerts_task = (
+        asyncio.create_task(alerts_service.run_alerts_monitor(settings))
+        if settings.alerts_in_ua_poll_interval_s > 0
+        else None
+    )
     yield
-    if task is not None:
-        task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
+    for t in (sweeper_task, alerts_task):
+        if t is not None:
+            t.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await t
 
 
 app = FastAPI(
@@ -66,6 +73,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(consents.router)
 app.include_router(shelters.router)
+app.include_router(alerts.router)
 
 app.include_router(ws.router)
 

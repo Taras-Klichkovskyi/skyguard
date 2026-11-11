@@ -13,6 +13,7 @@ from fastapi import WebSocket
 logger = logging.getLogger(__name__)
 
 SHELTER_UPDATED = "shelter.updated"
+AIR_RAID_ALERT_UPDATED = "air_raid_alert.updated"
 
 
 class Hub:
@@ -53,4 +54,21 @@ def shelter_updated(feature: dict, source: str) -> dict:
         "source": source,
         "sent_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "shelter": feature,
+    }
+
+
+def air_raid_alert_updated(
+    active: bool,
+    location_title: str,
+    started_at: str | None = None,
+    source: str = "alerts.in.ua",
+) -> dict:
+    """Подія про зміну статусу повітряної тривоги (SG-23)."""
+    return {
+        "type": AIR_RAID_ALERT_UPDATED,
+        "active": active,
+        "location": location_title,
+        "source": source,
+        "started_at": started_at,
+        "sent_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     }

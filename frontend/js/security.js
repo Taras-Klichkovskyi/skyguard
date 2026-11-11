@@ -54,7 +54,7 @@ SkyGuard.Security = {
   },
 
   /**
-   * Data Governance Consent Management (L1 Public vs L2 Processing)
+   * Data Governance Consent Management & Geolocation Pill
    */
   openConsentModal() {
     const modal = document.getElementById("consentModal");
@@ -66,19 +66,90 @@ SkyGuard.Security = {
     if (modal) modal.classList.remove("active");
   },
 
+  setConsent(granted) {
+    SkyGuard.State.setConsent(granted);
+    SkyGuard.Api.updateConsent(granted);
+
+    const indicator = document.getElementById("consentBtn");
+    const text = document.getElementById("consentStatusText");
+
+    if (granted) {
+      if (indicator) indicator.className = "geo-status-pill granted";
+      if (text) text.textContent = "Геолокація активна";
+      SkyGuard.Audit.logEvent("CONSENT_OPT_IN_GRANTED", "user/citizen_01", "SENSITIVE", 200);
+    } else {
+      if (indicator) indicator.className = "geo-status-pill denied";
+      if (text) text.textContent = "Геолокація вимкнена";
+      SkyGuard.Audit.logEvent("CONSENT_OPT_OUT_REVOKED", "user/citizen_01", "SENSITIVE", 200);
+    }
+
+    SkyGuard.Map.updateUserMarker();
+    SkyGuard.UI.updateStats();
+
+    if (SkyGuard.State.selectedShelterId) {
+      SkyGuard.UI.openShelterDetails(SkyGuard.State.selectedShelterId);
+    }
+
+    this.closeConsentModal();
+  },
+
+  /**
+   * Action when clicking the Geolocation & Consent pill in header:
+   * Instantly requests GPS from browser, centers map, and finds nearest shelter!
+   */
+  handleGeoButtonClick() {
+    SkyGuard.UI.showToast("📡 Визначення точних координат та передача геопозиції...", "info");
+    SkyGuard.Geo.locateUser(
+      (lat, lon) => {
+        SkyGuard.State.setUserLocation(lat, lon);
+        this.setConsent(true);
+        SkyGuard.Map.updateUserMarker();
+        SkyGuard.Map.instance.setView([lat, lon], 15.5);
+
+        // Find nearest open shelter
+        const openShelters = SkyGuard.State.shelters.filter(s => s.status === "OPEN");
+        if (openShelters.length > 0) {
+          let nearest = openShelters[0];
+          let minDist = SkyGuard.Geo.calculateHaversineDistance(lat, lon, nearest.lat, nearest.lon);
+          openShelters.forEach(s => {
+            const d = SkyGuard.Geo.calculateHaversineDistance(lat, lon, s.lat, s.lon);
+            if (d < minDist) { minDist = d; nearest = s; }
+          });
+          SkyGuard.UI.openShelterDetails(nearest.id);
+          SkyGuard.Map.drawRouteToShelter(nearest.id);
+          SkyGuard.UI.showToast(`🎯 Вашу геопозицію передано! Найближче укриття: ${nearest.name} (${SkyGuard.Geo.formatDistance(minDist)})`, "success");
+        } else {
+          SkyGuard.UI.showToast(`🎯 Вашу геопозицію передано: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`, "success");
+        }
+      },
+      (err) => {
+        // Fallback to center Lviv
+        SkyGuard.State.setUserLocation(49.8419, 24.0315, "м. Львів, пл. Ринок");
+        this.setConsent(true);
+        SkyGuard.Map.updateUserMarker();
+        SkyGuard.Map.instance.setView([49.8419, 24.0315], 15);
+        SkyGuard.UI.showToast("📍 Геопозицію передано (центр Львова, пл. Ринок)", "success");
+      }
+    );
+  },
+
   /**
    * Authentication & Role Switcher Modal Management (RBAC Portal)
    */
+  pendingRole: null,
+
   openAuthModal() {
     const modal = document.getElementById("authModal");
     if (!modal) return;
     modal.classList.add("active");
+    this.cancelPendingRole();
     this.updateModalActiveCard(SkyGuard.State.role);
   },
 
   closeAuthModal() {
     const modal = document.getElementById("authModal");
     if (modal) modal.classList.remove("active");
+    this.cancelPendingRole();
   },
 
   updateModalActiveCard(roleId) {
@@ -87,11 +158,63 @@ SkyGuard.Security = {
       card.classList.toggle("active", match);
       const btn = card.querySelector(".btn-switch-role");
       if (btn) {
-        btn.textContent = match ? "✓ Активна роль" : "Активувати роль";
-        btn.style.background = match ? "#10b981" : "";
-        btn.style.borderColor = match ? "#34d399" : "";
+        if (match) {
+          btn.textContent = "✓ Активна роль";
+          btn.style.background = "#10b981";
+          btn.style.borderColor = "#34d399";
+        } else {
+          btn.textContent = (card.dataset.role === "CITIZEN" ? "Вільний доступ" : "🔑 Увійти з паролем");
+          btn.style.background = "";
+          btn.style.borderColor = "";
+        }
       }
     });
+  },
+
+  /**
+   * Request role switch: if privileged, requires password verification
+   */
+  requestRoleSwitch(targetRoleId) {
+    if (targetRoleId === "CITIZEN" || targetRoleId === "ANONYMOUS") {
+      this.switchRole(targetRoleId);
+      return;
+    }
+
+    this.pendingRole = targetRoleId;
+    const roleDef = SkyGuard.Config.ROLES[targetRoleId];
+    const box = document.getElementById("rolePasswordVerifyBox");
+    const title = document.getElementById("verifyRoleTitle");
+    const err = document.getElementById("rolePassError");
+    const input = document.getElementById("inputRoleVerifyPass");
+
+    if (box && title) {
+      box.style.display = "block";
+      title.textContent = `Підтвердження службового доступу: ${roleDef ? roleDef.label : targetRoleId}`;
+      if (err) err.style.display = "none";
+      if (input) {
+        input.value = "skyguard-demo";
+        input.focus();
+      }
+    }
+  },
+
+  confirmPendingRole(password) {
+    if (!this.pendingRole) return;
+    if (password === "skyguard-demo") {
+      const roleToSet = this.pendingRole;
+      this.cancelPendingRole();
+      this.switchRole(roleToSet);
+    } else {
+      const err = document.getElementById("rolePassError");
+      if (err) err.style.display = "block";
+      SkyGuard.UI.showToast("⚠️ Невірний пароль для цієї ролі. Для тестування: skyguard-demo", "error");
+    }
+  },
+
+  cancelPendingRole() {
+    this.pendingRole = null;
+    const box = document.getElementById("rolePasswordVerifyBox");
+    if (box) box.style.display = "none";
   },
 
   /**
@@ -104,28 +227,14 @@ SkyGuard.Security = {
     // Update Header Profile Badge
     const avatarEl = document.getElementById("headerUserAvatar");
     const nameEl = document.getElementById("headerUserRoleName");
-    const badgeEl = document.getElementById("headerUserRoleBadge");
 
     if (avatarEl) avatarEl.textContent = roleDef.avatar;
     if (nameEl) nameEl.textContent = roleDef.label.split(" (")[0];
-    if (badgeEl) {
-      badgeEl.textContent = roleDef.badge;
-      if (roleDef.clearance === "L3_CONFIDENTIAL") {
-        badgeEl.style.background = "rgba(239, 68, 68, 0.2)";
-        badgeEl.style.color = "#f87171";
-      } else if (roleDef.clearance === "L2_INTERNAL") {
-        badgeEl.style.background = "rgba(245, 158, 11, 0.2)";
-        badgeEl.style.color = "#fbbf24";
-      } else {
-        badgeEl.style.background = "rgba(59, 130, 246, 0.2)";
-        badgeEl.style.color = "#60a5fa";
-      }
-    }
 
     this.updateModalActiveCard(roleDef.id);
 
     // Toast and Audit Log
-    SkyGuard.UI.showToast(`✓ Права доступу змінено: ${roleDef.label} (${roleDef.badge})`, "success");
+    SkyGuard.UI.showToast(`✓ Права доступу змінено: ${roleDef.label}`, "success");
     SkyGuard.Audit.logEvent("RBAC_ROLE_SWITCH", `user/session`, roleDef.clearance, 200);
 
     // If sidebar is currently open, refresh to show role-specific controls
@@ -177,34 +286,5 @@ SkyGuard.Security = {
     this.switchRole(targetRole);
     SkyGuard.UI.showToast(`✓ Авторизовано як ${email} (Bearer JWT дійсний 15 хв)`, "success");
     SkyGuard.Audit.logEvent("JWT_AUTH_SUCCESS", `auth/login?email=${email}`, "CONFIDENTIAL", 200);
-  },
-
-  setConsent(granted) {
-    SkyGuard.State.setConsent(granted);
-    SkyGuard.Api.updateConsent(granted);
-
-    const indicator = document.getElementById("consentBtn");
-    const text = document.getElementById("consentStatusText");
-
-    if (granted) {
-      if (indicator) indicator.className = "consent-indicator granted";
-      if (text) text.textContent = "Згода на геодані: Активна (L2)";
-      SkyGuard.UI.showToast("✓ Згоду на обробку GPS-координат успішно збережено (L2)", "success");
-      SkyGuard.Audit.logEvent("CONSENT_OPT_IN_GRANTED", "user/citizen_01", "SENSITIVE", 200);
-    } else {
-      if (indicator) indicator.className = "consent-indicator denied";
-      if (text) text.textContent = "Згода: Відхилено (Режим L1 PUBLIC)";
-      SkyGuard.UI.showToast("⚠️ Режим L1 PUBLIC: геолокація вимкнена відповідно до ст. 11 ЗУ", "warning");
-      SkyGuard.Audit.logEvent("CONSENT_OPT_OUT_REVOKED", "user/citizen_01", "SENSITIVE", 200);
-    }
-
-    SkyGuard.Map.updateUserMarker();
-    SkyGuard.UI.updateStats();
-
-    if (SkyGuard.State.selectedShelterId) {
-      SkyGuard.UI.openShelterDetails(SkyGuard.State.selectedShelterId);
-    }
-
-    this.closeConsentModal();
   }
 };

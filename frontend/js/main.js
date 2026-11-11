@@ -92,13 +92,43 @@ SkyGuard.bindEvents = function () {
     });
   }
 
-  // Fast Role Switch Cards
-  document.querySelectorAll(".role-select-card").forEach(card => {
-    card.addEventListener("click", (e) => {
-      const role = card.dataset.role;
-      if (role) SkyGuard.Security.switchRole(role);
+  // Fast Role Switch Cards with Password Verification
+  document.querySelectorAll(".btn-switch-role").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const role = btn.dataset.role || btn.closest(".role-select-card")?.dataset.role;
+      if (role) SkyGuard.Security.requestRoleSwitch(role);
     });
   });
+
+  document.querySelectorAll(".role-select-card").forEach(card => {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".btn-switch-role")) return;
+      const role = card.dataset.role;
+      if (role) SkyGuard.Security.requestRoleSwitch(role);
+    });
+  });
+
+  // Password Confirmation Handlers for Privileged Roles
+  const btnConfirmRolePass = document.getElementById("btnConfirmRolePass");
+  const btnCancelRolePass = document.getElementById("btnCancelRolePass");
+  const inputRoleVerifyPass = document.getElementById("inputRoleVerifyPass");
+
+  if (btnConfirmRolePass && inputRoleVerifyPass) {
+    btnConfirmRolePass.addEventListener("click", () => {
+      SkyGuard.Security.confirmPendingRole(inputRoleVerifyPass.value);
+    });
+    inputRoleVerifyPass.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        SkyGuard.Security.confirmPendingRole(inputRoleVerifyPass.value);
+      }
+    });
+  }
+  if (btnCancelRolePass) {
+    btnCancelRolePass.addEventListener("click", () => {
+      SkyGuard.Security.cancelPendingRole();
+    });
+  }
 
   // JWT Quick Presets
   document.querySelectorAll(".btn-preset-pill").forEach(pill => {
@@ -157,13 +187,17 @@ SkyGuard.bindEvents = function () {
     btnDsnsForceClose.addEventListener("click", () => SkyGuard.UI.forceDsnsStatus("CLOSED"));
   }
 
-  // 3. Consent Management
+  // 5. Geolocation Pill in Header (Click transmits GPS location immediately)
   const consentBtn = document.getElementById("consentBtn");
   const closeConsentBtn = document.getElementById("closeConsentModalBtn");
   const btnGrantConsent = document.getElementById("btnGrantConsent");
   const btnDenyConsent = document.getElementById("btnDenyConsent");
 
-  if (consentBtn) consentBtn.addEventListener("click", () => SkyGuard.Security.openConsentModal());
+  if (consentBtn) {
+    consentBtn.addEventListener("click", () => {
+      SkyGuard.Security.handleGeoButtonClick();
+    });
+  }
   if (closeConsentBtn) closeConsentBtn.addEventListener("click", () => SkyGuard.Security.closeConsentModal());
   if (btnGrantConsent) btnGrantConsent.addEventListener("click", () => SkyGuard.Security.setConsent(true));
   if (btnDenyConsent) btnDenyConsent.addEventListener("click", () => SkyGuard.Security.setConsent(false));

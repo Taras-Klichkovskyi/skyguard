@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Звідки дозволено звертатися браузерному клієнту (через кому)
     cors_origins: str = (
-        "http://localhost:5500,http://127.0.0.1:5500,http://localhost:5173,http://localhost:8080"
+        "http://localhost:5500,http://127.0.0.1:5500,http://localhost:5173,http://localhost:8080,http://localhost:8085"
     )
 
     # Правила якості даних (SG-2)
@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     report_rate_window_min: int = 5  # …за 5 хвилин від одного користувача
     # Як часто фонове завдання анулює звіти без кворуму; 0 — вимкнено
     sweep_interval_s: int = 60
+
+    # Інтеграція з alerts.in.ua (SG-23: моніторинг повітряних тривог)
+    alerts_in_ua_token: str | None = None
+    alerts_in_ua_poll_interval_s: int = 15
+    alerts_monitored_location_title: str = "Львівська область"
+    alerts_monitored_location_uid: int = 27
 
     @model_validator(mode="after")
     def _no_dev_secret_outside_dev(self) -> "Settings":

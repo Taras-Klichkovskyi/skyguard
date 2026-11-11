@@ -46,7 +46,7 @@ SkyGuard.UI = {
     if (elMode) {
       elMode.textContent = SkyGuard.State.alarmActive 
         ? "🚨 ПОВІТРЯНА ТРИВОГА" 
-        : (SkyGuard.State.consent ? "Штатний (L1/L2)" : "Обмежений (L1)");
+        : (SkyGuard.State.consent ? "Штатний режим" : "Геолокація вимкнена");
     }
 
     // Header Status Pill
@@ -170,7 +170,7 @@ SkyGuard.UI = {
         document.getElementById("detailCommanderPhone").textContent = `📞 ${shelter.commander.phone}`;
         document.getElementById("detailCommanderId").textContent = `Службовий жетон: ${shelter.commander.id}`;
         if (commanderTag) {
-          commanderTag.textContent = "L3 CONFIDENTIAL (Доступ ДСНС)";
+          commanderTag.textContent = "Прямий контакт ДСНС";
           commanderTag.className = "classification-tag tag-l3";
         }
       } else if (SkyGuard.State.role === "MANAGER") {
@@ -179,7 +179,7 @@ SkyGuard.UI = {
         document.getElementById("detailCommanderPhone").textContent = `📞 ${shelter.commander.phone}`;
         document.getElementById("detailCommanderId").textContent = `Службовий жетон: ${shelter.commander.id}`;
         if (commanderTag) {
-          commanderTag.textContent = "L2 MANAGER";
+          commanderTag.textContent = "Комендант укриття";
           commanderTag.className = "classification-tag tag-l2";
         }
       } else if (SkyGuard.State.consent && SkyGuard.State.role !== "ANONYMOUS") {
@@ -188,7 +188,7 @@ SkyGuard.UI = {
         document.getElementById("detailCommanderPhone").textContent = `📞 ${shelter.commander.phone}`;
         document.getElementById("detailCommanderId").textContent = `Службовий жетон: ${shelter.commander.id}`;
         if (commanderTag) {
-          commanderTag.textContent = "L2 INTERNAL";
+          commanderTag.textContent = "Службовий контакт";
           commanderTag.className = "classification-tag tag-l2";
         }
       } else {
@@ -197,13 +197,13 @@ SkyGuard.UI = {
         document.getElementById("detailCommanderPhone").textContent = "📞 +380 67 ••• •• ••";
         document.getElementById("detailCommanderId").textContent = "Службовий жетон: DSNS-LV-••••";
         if (commanderTag) {
-          commanderTag.textContent = "L1 MASKED (Потрібна згода)";
+          commanderTag.textContent = "Приховано (увімкніть геопозицію)";
           commanderTag.className = "classification-tag tag-l1";
         }
       }
     }
 
-    // Telemetry (L3) Gate
+    // Telemetry Gate
     const isPrivileged = ["MANAGER", "OPERATOR", "AUDITOR"].includes(SkyGuard.State.role);
     const telemetryContent = document.getElementById("telemetryDetailsContent");
     if (telemetryContent) {
@@ -214,7 +214,7 @@ SkyGuard.UI = {
       } else {
         telemetryContent.className = "blurred-content";
         document.getElementById("detailLockStatus").textContent = `Стан: •••••••• · Батарея: ••%`;
-        document.getElementById("detailLockId").textContent = `Модуль: LOCK-••••-••• (Захищено RBAC L3)`;
+        document.getElementById("detailLockId").textContent = `Модуль: LOCK-••••-••• (Службовий доступ)`;
       }
     }
 
