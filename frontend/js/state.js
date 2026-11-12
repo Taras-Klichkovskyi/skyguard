@@ -53,11 +53,12 @@ SkyGuard.State = {
       if (saved) {
         const map = JSON.parse(saved);
         this.shelters.forEach(s => {
-          if (map[s.id]) {
-            s.status = map[s.id].status;
-            s.confirmed_at = map[s.id].confirmed_at;
-            if (typeof map[s.id].occupancy === "number") {
-              s.current_occupancy = map[s.id].occupancy;
+          const item = map[s.id] || Object.values(map).find(m => m.name && m.name.toLowerCase() === s.name.toLowerCase());
+          if (item) {
+            s.status = item.status;
+            s.confirmed_at = item.confirmed_at;
+            if (typeof item.occupancy === "number") {
+              s.current_occupancy = item.occupancy;
             }
           }
         });
@@ -69,8 +70,9 @@ SkyGuard.State = {
       this.consent = false;
     }
 
+    // All quorum witness counters initialize to 0
     this.shelters.forEach(s => {
-      this.quorumCounts[s.id] = (s.status === "LIMITED" ? 2 : 1);
+      this.quorumCounts[s.id] = 0;
     });
 
     this.initSync();

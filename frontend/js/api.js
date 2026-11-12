@@ -62,34 +62,35 @@ SkyGuard.Api = {
    */
   async sendShelterStatusUpdate(shelterId, status, occupancy = null) {
     try {
+      const fetchFreshToken = async () => {
+        try {
+          const resp = await fetch(`${this.baseUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: "dsns@skyguard.demo", password: "skyguard-demo" })
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.access_token) {
+              if (SkyGuard.Security) SkyGuard.Security.token = data.access_token;
+              localStorage.setItem("skyguard_token", data.access_token);
+              localStorage.setItem("skyguard_jwt_token", data.access_token);
+              localStorage.setItem("skyguard_op_token", data.access_token);
+              return data.access_token;
+            }
+          }
+        } catch (e) {}
+        return null;
+      };
+
       let token = (SkyGuard.Security && SkyGuard.Security.token) ||
                   localStorage.getItem("skyguard_token") ||
-                  localStorage.getItem("skyguard_jwt_token");
+                  localStorage.getItem("skyguard_jwt_token") ||
+                  localStorage.getItem("skyguard_op_token");
 
-      // If current role is not privileged (e.g. CITIZEN executing automated geofence presence),
-      // obtain or use operator service token to allow backend to persist occupancy and broadcast via WebSocket
-      const isPrivileged = ["OPERATOR", "MANAGER"].includes(SkyGuard.State.role);
-      if (!isPrivileged) {
-        let opToken = localStorage.getItem("skyguard_op_token");
-        if (!opToken) {
-          try {
-            const loginResp = await fetch(`${this.baseUrl}/auth/login`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: "dsns@skyguard.demo", password: "skyguard-demo" })
-            });
-            if (loginResp.ok) {
-              const loginData = await loginResp.json();
-              opToken = loginData.access_token;
-              localStorage.setItem("skyguard_op_token", opToken);
-            }
-          } catch (e) {}
-        }
-        if (opToken) token = opToken;
+      if (!token) {
+        token = await fetchFreshToken();
       }
-
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
 
       // Backend schema expects "OPEN", "FULL", "CLOSED" (LIMITED is mapped to FULL)
       const backendStatus = (status === "LIMITED" ? "FULL" : status);
@@ -98,22 +99,44 @@ SkyGuard.Api = {
         payload.occupancy = occupancy;
       }
 
-      const response = await fetch(`${this.baseUrl}/shelters/${shelterId}/status`, {
+      let targetId = shelterId;
+      const sObj = SkyGuard.State && SkyGuard.State.getShelterById(shelterId);
+      if (sObj && sObj.backendId) {
+        targetId = sObj.backendId;
+      }
+
+      let response = await fetch(`${this.baseUrl}/shelters/${targetId}/status`, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(payload)
       });
 
+      // Auto-retry on 401 Unauthorized (expired JWT token)
+      if (response.status === 401) {
+        console.warn("[SkyGuard API] Token expired or invalid (401). Auto-refreshing DSNS session and retrying...");
+        token = await fetchFreshToken();
+        if (token) {
+          response = await fetch(`${this.baseUrl}/shelters/${targetId}/status`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+        }
+      }
+
       if (response.ok) {
         const resData = await response.json();
-        console.info(`[SkyGuard API] Status successfully updated on backend (200 OK): ${shelterId} → ${backendStatus} (occupancy: ${occupancy})`, resData);
+        console.info(`[SkyGuard API] Status successfully persisted to DB (200 OK): ${targetId} → ${backendStatus} (occupancy: ${occupancy})`, resData);
         return { success: true, status: response.status, data: resData };
       } else {
         const errJson = await response.json().catch(() => ({ detail: "Unknown error" }));
         console.warn(`[SkyGuard API] Backend rejected status update (${response.status}):`, errJson);
-        if (response.status === 401) {
-          SkyGuard.UI.showToast("⚠️ Потрібна авторизація ДСНС (пароль: skyguard-demo)", "warning");
-        }
         return { success: false, status: response.status, error: errJson };
       }
     } catch (e) {

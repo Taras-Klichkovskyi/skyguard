@@ -11,10 +11,11 @@ SkyGuard.Crowdsource = {
    * Updates visual progress bar of DQ-3 Quorum consensus for current shelter
    */
   updateQuorumDisplay(shelterId) {
-    const count = SkyGuard.State.quorumCounts[shelterId] || 1;
+    const count = (typeof SkyGuard.State.quorumCounts[shelterId] === "number") ? SkyGuard.State.quorumCounts[shelterId] : 0;
     const countText = document.getElementById("quorumCountText");
     const bar = document.getElementById("quorumBarFill");
     const hint = document.getElementById("quorumStatusHint");
+    const btn = document.getElementById("btnAddWitnessBtn");
 
     if (!countText || !bar || !hint) return;
 
@@ -22,9 +23,40 @@ SkyGuard.Crowdsource = {
     const pct = Math.min(100, Math.round((count / 3) * 100));
     bar.style.width = `${pct}%`;
 
+    // 15-minute rate-limit per device check
+    const voteKey = `skyguard_witness_voted_${shelterId}`;
+    const lastVote = localStorage.getItem(voteKey);
+    const now = Date.now();
+    const cooldownMs = 15 * 60 * 1000;
+    let isCooldown = false;
+    let remMin = 0;
+
+    if (lastVote) {
+      const elapsed = now - parseInt(lastVote, 10);
+      if (elapsed < cooldownMs) {
+        isCooldown = true;
+        remMin = Math.ceil((cooldownMs - elapsed) / 60000);
+      }
+    }
+
+    if (btn) {
+      if (isCooldown) {
+        btn.textContent = `⏳ Підтверджено (${remMin} хв)`;
+        btn.style.opacity = "0.65";
+        btn.title = `Наступне свідчення з цього телефону можливе через ${remMin} хв`;
+      } else {
+        btn.textContent = "+1 Підтвердити як свідок";
+        btn.style.opacity = "1";
+        btn.title = "Підтвердити стан укриття (доступно 1 раз на 15 хв з пристрою)";
+      }
+    }
+
     if (count >= SkyGuard.Config.DQ_RULES.DQ3_CONSENSUS_QUORUM) {
       countText.style.color = "#34d399";
       hint.textContent = "✓ Консенсус DQ-3 досягнуто! Статус верифіковано";
+    } else if (count === 0) {
+      countText.style.color = "#94a3b8";
+      hint.textContent = "Потрібно 3 свідки (1 підтвердження на телефон на 15 хв)";
     } else {
       countText.style.color = "#fbbf24";
       const remaining = SkyGuard.Config.DQ_RULES.DQ3_CONSENSUS_QUORUM - count;
@@ -34,6 +66,7 @@ SkyGuard.Crowdsource = {
 
   /**
    * Adds an independent witness confirmation to achieve DQ-3 consensus
+   * Rate limited: strictly 1 confirmation per device every 15 minutes
    */
   addWitnessToQuorum() {
     const id = SkyGuard.State.selectedShelterId;
@@ -41,7 +74,29 @@ SkyGuard.Crowdsource = {
     const shelter = SkyGuard.State.getShelterById(id);
     if (!shelter) return;
 
-    SkyGuard.State.quorumCounts[id] = (SkyGuard.State.quorumCounts[id] || 1) + 1;
+    // Rate-limit check: 1 confirmation per device every 15 minutes
+    const voteKey = `skyguard_witness_voted_${shelter.id}`;
+    const lastVote = localStorage.getItem(voteKey);
+    const now = Date.now();
+    const cooldownMs = 15 * 60 * 1000; // 15 min
+
+    if (lastVote) {
+      const elapsed = now - parseInt(lastVote, 10);
+      if (elapsed < cooldownMs) {
+        const remMin = Math.ceil((cooldownMs - elapsed) / 60000);
+        SkyGuard.UI.showToast(`⏳ Ви вже надіслали підтвердження для цього укриття! Повторне свідчення з вашого пристрою дозволено через ${remMin} хв (захист від накрутки DQ-3).`, "warning");
+        this.updateQuorumDisplay(shelter.id);
+        return;
+      }
+    }
+
+    // Save vote timestamp for this device
+    try {
+      localStorage.setItem(voteKey, now.toString());
+    } catch (e) {}
+
+    const prev = (typeof SkyGuard.State.quorumCounts[id] === "number") ? SkyGuard.State.quorumCounts[id] : 0;
+    SkyGuard.State.quorumCounts[id] = prev + 1;
     const current = SkyGuard.State.quorumCounts[id];
 
     this.updateQuorumDisplay(id);
@@ -49,19 +104,9 @@ SkyGuard.Crowdsource = {
     if (current >= SkyGuard.Config.DQ_RULES.DQ3_CONSENSUS_QUORUM) {
       shelter.status = "OPEN";
       shelter.confirmed_at = "Щойно (кворум DQ-3 підтверджено)";
-      SkyGuard.State.broadcastShelterUpdate(id, "OPEN", shelter.confirmed_at);
+      SkyGuard.State.broadcastShelterUpdate(id, "OPEN", shelter.confirmed_at, shelter.current_occupancy);
       if (SkyGuard.Api) {
-        if (["OPERATOR", "MANAGER"].includes(SkyGuard.State.role)) {
-          SkyGuard.Api.sendShelterStatusUpdate(id, "OPEN", shelter.current_occupancy);
-        } else {
-          const userLoc = SkyGuard.State.userLocation || { lat: shelter.lat, lon: shelter.lon };
-          SkyGuard.Api.submitStatusReport(id, {
-            status: "OPEN",
-            latitude: userLoc.lat,
-            longitude: userLoc.lon,
-            comment: "Кворум свідків DQ-3 досягнуто (3/3)"
-          });
-        }
+        SkyGuard.Api.sendShelterStatusUpdate(id, "OPEN", shelter.current_occupancy);
       }
       SkyGuard.Map.renderShelters();
       SkyGuard.UI.openShelterDetails(id);
@@ -70,7 +115,7 @@ SkyGuard.Crowdsource = {
     } else {
       SkyGuard.State.persistShelters();
       const remaining = SkyGuard.Config.DQ_RULES.DQ3_CONSENSUS_QUORUM - current;
-      SkyGuard.UI.showToast(`👍 Додано свідка (${current}/3). До консенсусу залишилось: ${remaining}`, "info");
+      SkyGuard.UI.showToast(`👍 Ваше підтвердження зараховано (${current}/3). Наступне підтвердження з цього телефону можливе через 15 хв. Залишилось: ${remaining}`, "info");
       SkyGuard.Audit.logEvent("CROWDSOURCE_WITNESS_SUBMITTED", `shelter/${id}`, "PUBLIC", 200);
     }
   },
@@ -124,6 +169,23 @@ SkyGuard.Crowdsource = {
     const shelter = SkyGuard.State.getShelterById(SkyGuard.State.selectedShelterId);
     if (!shelter) return;
 
+    // Rate-limit check: 1 report per device every 15 minutes
+    const reportKey = `skyguard_report_voted_${shelter.id}`;
+    const lastReport = localStorage.getItem(reportKey);
+    const now = Date.now();
+    const cooldownMs = 15 * 60 * 1000;
+
+    if (lastReport) {
+      const elapsed = now - parseInt(lastReport, 10);
+      if (elapsed < cooldownMs) {
+        const remMin = Math.ceil((cooldownMs - elapsed) / 60000);
+        SkyGuard.UI.showToast(`⏳ Ви вже подавали звіт для цього укриття! Повторне подання з вашого пристрою дозволено через ${remMin} хв (захист DQ-3).`, "warning");
+        const modal = document.getElementById("reportModal");
+        if (modal) modal.classList.remove("active");
+        return;
+      }
+    }
+
     const selectedRadio = document.querySelector('input[name="reportStatus"]:checked');
     const selectedStatus = selectedRadio ? selectedRadio.value : "OPEN";
 
@@ -150,6 +212,11 @@ SkyGuard.Crowdsource = {
       if (modal) modal.classList.remove("active");
       return;
     }
+
+    // Save report cooldown timestamp
+    try {
+      localStorage.setItem(reportKey, now.toString());
+    } catch (e) {}
 
     // Success 200 OK
     shelter.status = selectedStatus;

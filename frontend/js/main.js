@@ -39,6 +39,11 @@ SkyGuard.init = async function () {
     const liveShelters = await SkyGuard.Api.fetchShelters();
     if (liveShelters && liveShelters.length > 0) {
       SkyGuard.State.shelters = liveShelters;
+      liveShelters.forEach(s => {
+        if (typeof SkyGuard.State.quorumCounts[s.id] !== "number") {
+          SkyGuard.State.quorumCounts[s.id] = 0;
+        }
+      });
       SkyGuard.Map.renderShelters();
       SkyGuard.UI.updateStats();
     }

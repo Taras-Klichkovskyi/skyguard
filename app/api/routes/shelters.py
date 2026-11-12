@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import DbSession, authorize, deny_rbac
 from app.core.config import get_settings
@@ -168,15 +168,60 @@ def nearby_shelters(
     return ShelterFeatureCollection(features=[to_feature(s, d) for d, s in ranked])
 
 
-def _get_shelter(db: DbSession, shelter_id: uuid.UUID) -> Shelter:
-    shelter = db.get(Shelter, shelter_id)
-    if shelter is None or not shelter.is_active:
-        raise ApiError(404, "SHELTER_NOT_FOUND", "Укриття не знайдено")
-    return shelter
+def _get_shelter(db: DbSession, shelter_id: str | uuid.UUID) -> Shelter:
+    if isinstance(shelter_id, uuid.UUID):
+        shelter = db.get(Shelter, shelter_id)
+        if shelter is not None and shelter.is_active:
+            return shelter
+    else:
+        try:
+            val_uuid = uuid.UUID(str(shelter_id))
+            shelter = db.get(Shelter, val_uuid)
+            if shelter is not None and shelter.is_active:
+                return shelter
+        except (ValueError, AttributeError):
+            pass
+
+        # 2. Try registry_id
+        shelter = db.scalar(
+            select(Shelter).where(
+                (func.lower(Shelter.registry_id) == str(shelter_id).lower())
+                & Shelter.is_active.is_(True)
+            )
+        )
+        if shelter is not None:
+            return shelter
+
+        # 3. Map SH-LVIV-001 -> DEMO-0001
+        str_id = str(shelter_id).upper()
+        if str_id.startswith("SH-LVIV-"):
+            try:
+                num = int(str_id.split("-")[-1])
+                demo_reg = f"DEMO-{num:04d}"
+                shelter = db.scalar(
+                    select(Shelter).where(
+                        (Shelter.registry_id == demo_reg) & Shelter.is_active.is_(True)
+                    )
+                )
+                if shelter is not None:
+                    return shelter
+            except Exception:
+                pass
+
+        # 4. Search by name
+        shelter = db.scalar(
+            select(Shelter).where(
+                Shelter.name.ilike(f"%{shelter_id}%") & Shelter.is_active.is_(True)
+            )
+        )
+        if shelter is not None:
+            return shelter
+
+    raise ApiError(404, "SHELTER_NOT_FOUND", "Укриття не знайдено")
 
 
 @router.get("/{shelter_id}", response_model=ShelterFeature, responses=NOT_FOUND)
-def get_shelter(shelter_id: uuid.UUID, db: DbSession) -> ShelterFeature:
+def get_shelter(shelter_id: str, db: DbSession) -> ShelterFeature:
     """Одне укриття з публічного реєстру. Автентифікація не потрібна."""
     return to_feature(_get_shelter(db, shelter_id))
 
@@ -187,7 +232,7 @@ def get_shelter(shelter_id: uuid.UUID, db: DbSession) -> ShelterFeature:
     responses={**UNAUTHORIZED, **FORBIDDEN, **NOT_FOUND},
 )
 def shelter_contacts(
-    shelter_id: uuid.UUID,
+    shelter_id: str,
     request: Request,
     db: DbSession,
     user: Annotated[User, Depends(authorize(SHELTER_READ_CONTACTS))],
@@ -196,8 +241,9 @@ def shelter_contacts(
 
     Оператор ДСНС бачить контакти будь-якого укриття, комендант — лише закріпленого за ним.
     """
+    shelter = _get_shelter(db, shelter_id)
     policy = SHELTER_READ_CONTACTS
-    if policy.needs_ownership(user.role.code) and user.assigned_shelter_id != shelter_id:
+    if policy.needs_ownership(user.role.code) and user.assigned_shelter_id != shelter.id:
         raise deny_rbac(
             db,
             request,
@@ -205,9 +251,8 @@ def shelter_contacts(
             policy,
             reason="not_resource_owner",
             entity_type="shelter",
-            entity_id=shelter_id,
+            entity_id=shelter.id,
         )
-    shelter = _get_shelter(db, shelter_id)
     audit.record(
         db,
         request,
@@ -267,7 +312,7 @@ def _notify(background: BackgroundTasks, shelter: Shelter, source: ReportType) -
     responses={**UNAUTHORIZED, **FORBIDDEN, **NOT_FOUND},
 )
 def update_status(
-    shelter_id: uuid.UUID,
+    shelter_id: str,
     body: StatusUpdateIn,
     request: Request,
     background: BackgroundTasks,
@@ -278,8 +323,9 @@ def update_status(
 
     Комендант змінює статус лише закріпленого за ним укриття, оператор ДСНС — будь-якого.
     """
+    target = _get_shelter(db, shelter_id)
     policy = SHELTER_STATUS_UPDATE
-    if policy.needs_ownership(user.role.code) and user.assigned_shelter_id != shelter_id:
+    if policy.needs_ownership(user.role.code) and user.assigned_shelter_id != target.id:
         raise deny_rbac(
             db,
             request,
@@ -287,9 +333,9 @@ def update_status(
             policy,
             reason="not_resource_owner",
             entity_type="shelter",
-            entity_id=shelter_id,
+            entity_id=target.id,
         )
-    shelter = status_service.lock_shelter(db, shelter_id)
+    shelter = status_service.lock_shelter(db, target.id)
     if shelter is None:
         raise ApiError(404, "SHELTER_NOT_FOUND", "Укриття не знайдено")
     if body.occupancy is not None and body.occupancy > shelter.capacity:
@@ -330,7 +376,7 @@ def update_status(
     responses={**UNAUTHORIZED, **FORBIDDEN, **NOT_FOUND, **DQ_FAILED},
 )
 def report_status(
-    shelter_id: uuid.UUID,
+    shelter_id: str,
     body: StatusReportIn,
     request: Request,
     background: BackgroundTasks,
@@ -346,7 +392,8 @@ def report_status(
     policy = SHELTER_STATUS_REPORT
     settings = get_settings()
     now = datetime.now(UTC)
-    shelter = status_service.lock_shelter(db, shelter_id)
+    target = _get_shelter(db, shelter_id)
+    shelter = status_service.lock_shelter(db, target.id)
     if shelter is None:
         raise ApiError(404, "SHELTER_NOT_FOUND", "Укриття не знайдено")
     if status_service.recent_reports(db, user.id, now) >= settings.report_rate_limit:
