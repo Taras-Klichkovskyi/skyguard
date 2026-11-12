@@ -151,6 +151,10 @@ SkyGuard.Api = {
    * Initializes live WebSocket connection for instant push updates (SG-21)
    */
   initWebSocket() {
+    if (!SkyGuard.Config.ENABLE_WEBSOCKET_STREAM) {
+      console.info("[SkyGuard API] Прототип працює в автономному режимі (SG-9). Фоновий WebSocket вимкнено для стабільності демонстрації.");
+      return;
+    }
     try {
       const base = SkyGuard.Config.API_BASE_URL || "http://localhost:8000/api/v1";
       const wsProto = base.startsWith("https") ? "wss" : "ws";
@@ -206,7 +210,7 @@ SkyGuard.Api = {
           }
 
           // Handle Air Raid Alert push notification from alerts.in.ua (SG-23)
-          if (msg.type === "air_raid_alert.updated") {
+          if (msg.type === "air_raid_alert.updated" && SkyGuard.Config.ENABLE_LIVE_ALERTS_API) {
             const isCurrentlyAlarm = SkyGuard.State.alarmActive;
             if (msg.active && !isCurrentlyAlarm) {
               SkyGuard.UI.toggleAlarmMode();
