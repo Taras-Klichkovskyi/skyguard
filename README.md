@@ -35,7 +35,6 @@ docker compose exec api python -m app.seed
 ```
 
 ### 📍 Адреси запущених сервісів:
-https://skyguard1-frontend.vercel.app
 * 🗺️ **Веб-застосунок (карта та кабінет):** [http://localhost:8085](http://localhost:8085)
 * ⚡ **REST API сервіси:** [http://localhost:8000](http://localhost:8000)
 * 📖 **Інтерактивна документація OpenAPI (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
