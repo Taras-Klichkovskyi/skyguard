@@ -278,64 +278,47 @@ SkyGuard.UI = {
   /**
    * Applies official status & occupancy update as Shelter Manager (No Quorum Required)
    */
-  applyManagerShelterUpdate() {
+  async applyManagerShelterUpdate() {
     const shelter = SkyGuard.State.getShelterById(SkyGuard.State.selectedShelterId);
     if (!shelter) return;
 
     const statusSelect = document.getElementById("managerStatusSelect");
     const occInput = document.getElementById("managerOccupancyInput");
-
     const newStatus = statusSelect ? statusSelect.value : shelter.status;
-    const newOccupancy = occInput ? parseInt(occInput.value, 10) : shelter.current_occupancy;
+    const parsed = occInput ? parseInt(occInput.value, 10) : NaN;
+    const occupancy = isNaN(parsed) ? null : Math.min(parsed, shelter.capacity);
 
-    shelter.status = newStatus;
-    shelter.current_occupancy = isNaN(newOccupancy) ? shelter.current_occupancy : Math.min(newOccupancy, shelter.capacity);
-    shelter.confirmed_at = "Щойно (комендант)";
-
-    // 1. Instant sync across tabs
-    SkyGuard.State.broadcastShelterUpdate(shelter.id, newStatus, shelter.confirmed_at, shelter.current_occupancy);
-
-    // 2. Transmit to live backend API & WebSocket
-    if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
-      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, newStatus, shelter.current_occupancy);
-    }
-
-    SkyGuard.Map.renderShelters();
-    this.updateStats();
-    this.openShelterDetails(shelter.id);
-
-    this.showToast(`✓ Офіційний статус «${shelter.name}» оновлено (${newStatus}, заповнено: ${shelter.current_occupancy})`, "success");
-    SkyGuard.Audit.logEvent("OFFICIAL_STATUS_UPDATE", `shelter/${shelter.id}/status`, "INTERNAL", 200);
+    await this.submitOfficialStatus(shelter, newStatus, occupancy, "комендант");
   },
 
   /**
-   * Forces status override by DSNS Operator (Emergency Dispatch)
+   * Status override by DSNS Operator (Emergency Dispatch)
    */
-  forceDsnsStatus(newStatus) {
+  async forceDsnsStatus(newStatus) {
     const shelter = SkyGuard.State.getShelterById(SkyGuard.State.selectedShelterId);
     if (!shelter) return;
+    await this.submitOfficialStatus(shelter, newStatus, null, "ДСНС");
+  },
 
-    shelter.status = newStatus;
-    shelter.confirmed_at = "Щойно (ДСНС)";
-    if (newStatus === "CLOSED") {
-      shelter.current_occupancy = 0;
+  /**
+   * Official status goes to the server first; the map changes only after 200 OK.
+   * Other clients receive the change through the WebSocket (shelter.updated).
+   */
+  async submitOfficialStatus(shelter, newStatus, occupancy, source) {
+    const res = await SkyGuard.Api.sendShelterStatusUpdate(shelter.id, newStatus, occupancy);
+    if (!res.success) {
+      const err = res.error || {};
+      const ref = err.audit_entry_id ? ` · запис аудиту #${err.audit_entry_id}` : "";
+      if (res.offline) this.showToast("⚠️ Сервер недоступний: статус не змінено", "error");
+      else this.showToast(`🚫 HTTP ${res.status} ${err.error || ""}: ${err.message || "статус не змінено"}${ref}`, "error");
+      return;
     }
-
-    // 1. Instant sync across tabs in same browser (DSNS tab -> Citizen tab)
-    SkyGuard.State.broadcastShelterUpdate(shelter.id, newStatus, shelter.confirmed_at, shelter.current_occupancy);
-
-    // 2. Transmit to live backend API & WebSocket stream
-    if (SkyGuard.Api && typeof SkyGuard.Api.sendShelterStatusUpdate === "function") {
-      SkyGuard.Api.sendShelterStatusUpdate(shelter.id, newStatus, shelter.current_occupancy);
-    }
-
-    SkyGuard.Map.renderShelters();
-    this.updateStats();
+    SkyGuard.Crowdsource.applyServerFeature(shelter, res.data.shelter, source);
+    SkyGuard.State.quorumCounts[shelter.id] = 0;
+    SkyGuard.State.broadcastShelterUpdate(shelter.id, shelter.status, shelter.confirmed_at, shelter.current_occupancy);
     this.openShelterDetails(shelter.id);
-
-    const actionText = newStatus === "OPEN" ? "ВІДЧИНЕНО ДЛЯ ЕВАКУАЦІЇ" : "ОПЕЧАТАНО / ЗАЧИНЕНО";
-    this.showToast(`🚒 ДСНС оперативно змінив статус: ${actionText} (200 OK)`, newStatus === "OPEN" ? "success" : "warning");
-    SkyGuard.Audit.logEvent("DSNS_FORCE_STATUS_OVERRIDE", `shelter/${shelter.id}/force_status`, "CONFIDENTIAL", 200);
+    const label = shelter.status === "OPEN" ? "ВІДЧИНЕНО" : shelter.status === "CLOSED" ? "ЗАЧИНЕНО" : "ОБМЕЖЕНО";
+    this.showToast(`✓ 200 OK · офіційний статус «${shelter.name}»: ${label} (${source})`, "success");
   },
 
   /**

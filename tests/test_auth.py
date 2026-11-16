@@ -210,3 +210,13 @@ def test_unknown_path_uses_common_error_format(client):
     assert r.status_code == 404
     assert r.json()["error"] == "NOT_FOUND"
     assert r.json()["request_id"] == r.headers["X-Request-ID"]
+
+
+def test_cors_allows_docker_compose_frontend(client):
+    """Фронтенд із docker compose (порт 8085) має доступ до API з браузера."""
+    for origin in ("http://localhost:8085", "http://127.0.0.1:8085"):
+        r = client.options(
+            "/api/v1/shelters",
+            headers={"Origin": origin, "Access-Control-Request-Method": "GET"},
+        )
+        assert r.headers.get("access-control-allow-origin") == origin
