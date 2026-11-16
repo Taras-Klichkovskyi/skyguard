@@ -215,7 +215,17 @@ SkyGuard.Audit = {
   /**
    * Renders the audit log table into the modal dialog
    */
-  renderTable(filterStatus = null) {
+  // Active status filter (null = all); kept across live refreshes
+  currentFilter: null,
+
+  renderTable(filterStatus = undefined) {
+    if (filterStatus !== undefined) this.currentFilter = filterStatus;
+    filterStatus = this.currentFilter;
+    const chipIds = { null: "auditFilterAll", 200: "auditFilter200", 403: "auditFilter403", 422: "auditFilter422" };
+    Object.entries(chipIds).forEach(([key, id]) => {
+      const chip = document.getElementById(id);
+      if (chip) chip.classList.toggle("active", String(filterStatus) === key);
+    });
     const tbody = document.getElementById("auditTableBody");
     if (!tbody) return;
     tbody.innerHTML = "";

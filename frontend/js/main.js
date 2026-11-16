@@ -397,7 +397,7 @@ SkyGuard.bindEvents = function () {
   const filter403 = document.getElementById("auditFilter403");
   const filter422 = document.getElementById("auditFilter422");
 
-  if (filterAll) filterAll.addEventListener("click", () => SkyGuard.Audit.renderTable());
+  if (filterAll) filterAll.addEventListener("click", () => SkyGuard.Audit.renderTable(null));
   if (filter200) filter200.addEventListener("click", () => SkyGuard.Audit.renderTable(200));
   if (filter403) filter403.addEventListener("click", () => SkyGuard.Audit.renderTable(403));
   if (filter422) filter422.addEventListener("click", () => SkyGuard.Audit.renderTable(422));

@@ -302,6 +302,7 @@ SkyGuard.Security = {
         SkyGuard.Audit.fetchLiveAuditTrail();
         const modal = document.getElementById("auditModal");
         if (modal) modal.classList.add("active");
+        SkyGuard.Audit.startLiveSync();  // new events (e.g. a fresh 403) appear without reopening
       }, 200);
     }
 

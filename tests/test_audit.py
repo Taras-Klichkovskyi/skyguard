@@ -44,3 +44,21 @@ def test_tc06_auditor_reading_audit_trail_is_200_and_integrity_verified(client, 
     assert "audit_event_id" in body
     assert "entries" in body
     assert isinstance(body["entries"], list)
+
+
+def test_tc06_tampered_record_is_detected_by_the_endpoint(client, make_user, auth, db):
+    """Підміна вмісту запису ламає перевірку, навіть якщо зв'язки prev_hash цілі."""
+    from sqlalchemy import text
+
+    auditor = make_user(RoleCode.SECURITY_AUDITOR)
+    headers = auth(auditor)
+    assert client.get(AUDIT_URL, headers=headers).json()["integrity_verified"] is True
+
+    # Зловмисник із правами суперкористувача БД обходить тригер і змінює дію в записі
+    db.execute(text("ALTER TABLE audit_log DISABLE TRIGGER trg_audit_log_no_modify"))
+    db.execute(
+        text("UPDATE audit_log SET action = 'TAMPERED' WHERE id = (SELECT min(id) FROM audit_log)")
+    )
+    db.execute(text("ALTER TABLE audit_log ENABLE TRIGGER trg_audit_log_no_modify"))
+
+    assert client.get(AUDIT_URL, headers=headers).json()["integrity_verified"] is False
