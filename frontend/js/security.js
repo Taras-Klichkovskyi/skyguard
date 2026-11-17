@@ -231,9 +231,10 @@ SkyGuard.Security = {
       box.style.display = "block";
       title.textContent = `Підтвердження службового доступу: ${roleDef ? roleDef.label : targetRoleId}`;
       if (err) err.style.display = "none";
+      box.scrollIntoView({ behavior: "smooth", block: "center" });
       if (input) {
         input.value = "skyguard-demo";
-        input.focus();
+        input.focus({ preventScroll: true });
       }
     }
   },
