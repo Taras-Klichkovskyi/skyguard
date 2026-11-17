@@ -18,3 +18,8 @@ htmlcov/
 .DS_Store
 node_modules/
 dist/
+
+# Матеріали демо-відео SG-17 (великі файли, у репозиторій не кладемо)
+demo_capture/
+demo_capture.zip
+*.mp4
