@@ -1,0 +1,23 @@
+# У образ API потрапляє лише код бекенду. Без цього файлу COPY . . тягнув би
+# .venv з Windows, .git, кадри демо і, головне, .env із паролями.
+.git
+.github
+.venv
+venv
+.env
+.env.*
+!.env.example
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+frontend
+docs
+tests
+demo_capture
+demo_capture.zip
+*.mp4
+.idea
+.vscode
