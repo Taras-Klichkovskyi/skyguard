@@ -346,11 +346,25 @@ SkyGuard.Security = {
           if (SkyGuard.State.consent) this.syncConsentWithServer(true);
         }
       } else {
+        // Сервер відповів, але вхід відхилив (невірний пароль, неактивний акаунт):
+        // роль не змінюємо, інакше інтерфейс показав би права, яких немає
         const errJson = await resp.json().catch(() => ({}));
         console.warn("[SkyGuard Auth] Live login returned non-200:", resp.status, errJson);
+        const reason = resp.status === 401
+          ? "невірний email або пароль"
+          : (errJson.message || errJson.error || "спробуйте ще раз");
+        SkyGuard.UI.showToast(`⛔ Вхід відхилено сервером (HTTP ${resp.status}): ${reason}`, "error");
+        return;
       }
     } catch (e) {
+      // API не запущено: лишаємо офлайн-демо, але чесно про це кажемо
       console.debug("[SkyGuard Auth] Live backend offline, fallback to simulated session:", e.message);
+      this.switchRole(targetRole);
+      SkyGuard.UI.showToast(
+        `⚠️ API недоступний (${SkyGuard.Config.API_BASE_URL}) — роль увімкнено в офлайн-демо без сервера`,
+        "warning"
+      );
+      return;
     }
 
     // Apply role and feedback

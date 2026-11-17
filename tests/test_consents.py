@@ -2,10 +2,16 @@
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
-from app.models import AuditLog, ConsentRecord
-from app.models.enums import AuditOutcome, ConsentPurpose, DataClassification, RoleCode
+from app.models import AuditLog, ConsentRecord, Shelter
+from app.models.enums import (
+    AuditOutcome,
+    ConsentPurpose,
+    DataClassification,
+    RoleCode,
+    ShelterStatus,
+)
 
 URL = "/api/v1/consents"
 NEARBY = "/api/v1/shelters/nearby"
@@ -166,6 +172,9 @@ def test_consent_for_another_purpose_does_not_unlock_nearby(client, make_user, a
 
 
 def test_nearby_with_consent_sorts_by_distance(client, make_user, make_shelter, auth, db):
+    # У засіяній БД (docker compose) поруч є демо-укриття; у межах транзакції тесту
+    # закриваємо їх, щоб серед відкритих лишилися тільки створені тут
+    db.execute(update(Shelter).values(current_status=ShelterStatus.CLOSED))
     near = make_shelter(lat="49.840000", lon="24.030000")  # ≈ 40 м
     mid = make_shelter(lat="49.848700", lon="24.029700")  # ≈ 1 км на північ
     kyiv = make_shelter(lat="50.450000", lon="30.520000")

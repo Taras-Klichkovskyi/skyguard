@@ -23,99 +23,164 @@
 * **Контроль якості даних (Data Quality):**
   * `DQ-1: Geofence` — підтвердження стану дверей укриття дозволено лише в радіусі $\le 100\text{ м}$ (Haversine);
   * `DQ-2: Freshness` — автоматичне визначення застарілих статусів ($> 30\text{ хв}$);
-  * `DQ-3: Quorum` — зміна публічного статусу за кворумом від 3 незалежних свідків (із захистом від накрутки: 1 підтвердження на пристрій за 15 хв).
+  * `DQ-3: Quorum` — зміна публічного статусу, коли сума ваг звітів за 15 хв сягає 3 (мешканець — 1, волонтер/комендант/ДСНС — 3); не більше 3 звітів від користувача за 5 хв.
 * **Незмінний журнал аудиту:**
   * Усі події (надання/відкликання згоди, відхилення доступу 403, помилки якості 422, зміна статусів) фіксуються в криптографічному журналі з хеш-ланцюгом **SHA-256**.
 
 ---
 
-## 🚀 Як запустити проєкт
+## 🚀 Запуск з нуля
 
-### Варіант 1. Швидкий запуск через Docker Compose (Рекомендовано)
+Увесь прототип (PostgreSQL 16 + FastAPI + веб-клієнт) піднімається **однією командою**. Під час першого старту API сам застосовує міграції й засіває демо-укриття та тестових користувачів. Окремо нічого запускати не треба.
 
-Запуск повної інфраструктури (БД PostgreSQL 16 + FastAPI бекенд + веб-клієнт):
+### 1. Що потрібно встановити (один раз)
+
+| Програма | Навіщо | Де взяти |
+|:---|:---|:---|
+| **Git** | завантажити репозиторій | https://git-scm.com/downloads |
+| **Docker Desktop** (Windows/macOS) або Docker Engine + Compose v2.24+ (Linux) | запуск БД, API і фронтенду | https://www.docker.com/products/docker-desktop/ |
+
+Python для запуску **не потрібен**. Він знадобиться лише для тестів і перевірочного скрипта (див. нижче).
+
+> **Windows.** Docker Desktop працює через WSL 2, і йому потрібні компоненти Windows, які вмикаються лише з правами адміністратора. Якщо інсталятор або Docker Desktop пише *«Virtual Machine Platform is not enabled»*, відкрийте **PowerShell від імені адміністратора** і виконайте:
+> ```powershell
+> Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -All -NoRestart
+> Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -All -NoRestart
+> ```
+> Потім **перезавантажте ПК**, виконайте `wsl --update` і знову запустіть Docker Desktop. Перед запуском проєкту внизу зліва в Docker Desktop має бути **«Engine running»**.
+
+### 2. Завантажити й запустити
+
+Ці команди однакові для PowerShell, cmd, macOS і Linux:
 
 ```bash
-# 1. Створіть файл змінних оточення з шаблону
-cp .env.example .env
-
-# 2. Запустіть сервіси
-docker compose up -d --build
-
-# 3. Наповніть базу демонстраційними укриттями та тестовими користувачами
-docker compose exec api python -m app.seed
+git clone https://github.com/Taras-Klichkovskyi/skyguard.git
+cd skyguard
+docker compose up -d --build --wait
 ```
 
-**Адреси сервісів:**
-* 🗺️ **Веб-інтерфейс (карта):** [http://localhost:8085](http://localhost:8085)
-* ⚡ **REST API:** [http://localhost:8000](http://localhost:8000)
-* 📖 **OpenAPI документація (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
-* 🩺 **Health Check:** [http://localhost:8000/health/ready](http://localhost:8000/health/ready)
+Перший запуск триває 3–5 хвилин, бо Docker завантажує образи. Команда завершиться, коли всі три сервіси будуть готові.
+
+Файл `.env` створювати **не обов'язково**: без нього діють безпечні для демо значення за замовчуванням. Якщо треба змінити паролі, порти чи CORS, скопіюйте шаблон і відредагуйте його:
+
+| Оболонка | Команда |
+|:---|:---|
+| PowerShell | `Copy-Item .env.example .env` |
+| cmd | `copy .env.example .env` |
+| bash / zsh | `cp .env.example .env` |
+
+### 3. Відкрити
+
+* 🗺️ **Веб-інтерфейс (карта):** http://localhost:8085
+* ⚡ **REST API:** http://localhost:8000
+* 📖 **Swagger (OpenAPI):** http://localhost:8000/docs
+* 🩺 **Стан API і БД:** http://localhost:8000/health/ready
+
+### 4. Перевірити, що все працює (необов'язково)
+
+```bash
+python scripts/check_stack.py
+```
+
+Скрипт не потребує жодних пакетів. Він перевіряє:
+- API і БД;
+- наявність укриттів;
+- веб-інтерфейс;
+- CORS між фронтендом і API;
+- вхід усіх п'яти тестових користувачів;
+- цілісність журналу аудиту.
+
+Кожна проблема виводиться з підказкою, що робити. Ту саму перевірку на чистій машині без `.env` виконує CI (job `compose-smoke`).
+
+### Зупинити, перезапустити, почати з чистої бази
+
+```bash
+docker compose ps          # стан сервісів
+docker compose logs api    # логи API (міграції, засів, помилки)
+docker compose down        # зупинити (дані зберігаються)
+docker compose down -v     # зупинити й видалити БД — наступний up засіє все заново
+git pull && docker compose up -d --build --wait   # оновитися до нової версії
+```
 
 ---
 
-### Варіант 2. Локальний запуск веб-інтерфейсу (без Docker)
+## 👤 Тестові користувачі (RBAC)
 
-Веб-клієнт є автономним і може працювати на вбудованому каталозі укриттів:
+Створюються автоматично під час першого старту. **Пароль для всіх:** `skyguard-demo`.
 
-```bash
-# Запуск локального HTTP-сервера для папки фронтенду
-python3 -m http.server 8085 --directory frontend
-```
-Після цього відкрийте у браузері: [http://localhost:8085](http://localhost:8085) або просто відкрийте файл `frontend/index.html`.
+| Роль | Email (логін) | Рівень доступу | Що може в системі |
+|:---|:---|:---|:---|
+| **Громадянин** *(CITIZEN)* | `citizen@skyguard.demo` | L1: PUBLIC | Пошук укриттів, маршрут SafeRoute, краудсорс-звіт біля входу (вага 1) |
+| **Верифікований волонтер** *(VERIFIED_VOLUNTEER)* | `volunteer@skyguard.demo` | L1 / L2 | Звіт з вагою 3: сам закриває кворум DQ-3 |
+| **Комендант укриття** *(SHELTER_MANAGER)* | `manager@skyguard.demo` | L2 / L3 | Офіційний статус свого укриття (`DEMO-0001`), службові контакти |
+| **Оператор ДСНС** *(DSNS_OPERATOR)* | `dsns@skyguard.demo` | L3 | Примусова зміна статусу будь-якого укриття, контакти комендантів |
+| **Аудитор безпеки** *(SECURITY_AUDITOR)* | `auditor@skyguard.demo` | L3 | Журнал аудиту SHA-256 з перевіркою цілісності на сервері |
+
+**Як увійти у веб-інтерфейсі:**
+1. Угорі праворуч натисніть кнопку з поточною роллю (**👤 Громадянин ▾**).
+2. На вкладці **«Швидкий вибір ролі»** натисніть **🔑 Увійти з паролем** на картці потрібної ролі. Нижче з'явиться блок підтвердження з уже вписаним паролем.
+3. Натисніть **«Підтвердити»** або Enter.
+
+Можна й інакше: на вкладці **«Вхід за обліковим записом (JWT)»** введіть email і пароль з таблиці.
+
+Через API вхід виконується так: `POST /api/v1/auth/login` з тілом `{"email": "...", "password": "skyguard-demo"}`. У відповіді приходить `access_token` (15 хв) і `refresh_token`.
 
 ---
 
-### Варіант 3. Локальний запуск бекенду (Python)
+## 🩹 Якщо щось не працює
+
+| Що бачите | Причина і що робити |
+|:---|:---|
+| `docker: command not found` / `'docker' is not recognized` | Docker Desktop не встановлено або термінал відкрито до встановлення. Закрийте й знову відкрийте термінал |
+| `error during connect` / `Cannot connect to the Docker daemon` | Docker Desktop не запущено. Запустіть його й дочекайтеся «Engine running» |
+| *Virtual Machine Platform is not enabled* | Див. примітку для Windows у кроці 1 (потрібні права адміністратора й перезавантаження) |
+| *Virtualization support not detected* | У BIOS/UEFI вимкнена віртуалізація: увімкніть **Intel VT-x** або **AMD SVM** |
+| `port is already allocated` (5432) | Порт зайнятий локальним PostgreSQL. Скопіюйте `.env.example` у `.env`, поставте `DB_PORT=5433` і `POSTGRES_PORT=5433`, потім знову `docker compose up -d --wait` |
+| `port is already allocated` (8000 або 8085) | Зайнято іншою програмою, наприклад старим `uvicorn` або `http.server`. Закрийте її |
+| Помилка про `env_file`, `path` чи `required` | Застарілий Docker Compose (до v2.24). Оновіть Docker Desktop |
+| Карта є, але вхід не працює або з'являється «API недоступний» | API не запущено (`docker compose ps`, `docker compose logs api`) або старий `.env` без `http://localhost:8085` у `CORS_ORIGINS`. Видаліть `.env` або скопіюйте шаблон наново, потім `docker compose up -d` |
+| У консолі браузера `ERR_BLOCKED_BY_CLIENT` | Блокувальник реклами (uBlock тощо) не пускає запити до API. Вимкніть його для `localhost` |
+| Карта сіра, без вулиць | Немає інтернету: Leaflet і тайли OpenStreetMap завантажуються з мережі |
+| Старі статуси чи записи аудиту від попередніх запусків | `docker compose down -v && docker compose up -d --wait` — база створиться й засіється наново |
+| `Set-ExecutionPolicy` / `Activate.ps1` не виконується (PowerShell) | Перед активацією `.venv` виконайте `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`. У cmd замість цього використовуйте `.venv\Scripts\activate.bat` |
+
+---
+
+## 🧪 Автоматичні тести
+
+Тести працюють проти справжнього PostgreSQL, тому БД має бути запущена:
 
 ```bash
-# 1. Віртуальне оточення
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 2. Встановлення залежностей
+docker compose up -d db --wait
+python -m venv .venv
+# PowerShell: .venv\Scripts\Activate.ps1   ·   cmd: .venv\Scripts\activate.bat   ·   bash: source .venv/bin/activate
 pip install -r requirements-dev.txt
-
-# 3. Запуск PostgreSQL (наприклад, через Docker)
-docker compose up -d db
-
-# 4. Застосування міграцій та наповнення БД
 alembic upgrade head
-python -m app.seed
+pytest -v --cov=app             # тести й покриття (поріг 70 %)
+ruff check . && ruff format --check .
+```
 
-# 5. Запуск сервера розробки FastAPI
+Рекомендований Python — 3.12 або 3.13. На найновіших версіях Python під Windows деякі пакети можуть ще не мати готових збірок.
+
+Без Docker можна вказати будь-який PostgreSQL 16 повним рядком підключення: `DATABASE_URL=postgresql+psycopg://user:pass@host:5432/db`.
+
+---
+
+## 🧰 Інші способи запуску
+
+**Лише веб-інтерфейс (офлайн-демо без сервера).** Клієнт має вбудований каталог укриттів і працює без API. Ролі в ньому перемикаються локально, і на це вказує повідомлення «API недоступний».
+```bash
+python -m http.server 8085 --directory frontend
+```
+
+**API на хості з автоперезавантаженням (для розробки).** Потрібні `.env` (`POSTGRES_HOST=localhost` вже в шаблоні) і запущена БД:
+```bash
+docker compose up -d db --wait
+alembic upgrade head && python -m app.seed
 uvicorn app.main:app --reload --port 8000
 ```
 
----
-
-## 👤 Тестові облікові записи (RBAC)
-
-Для демонстрації рольової моделі доступу створено попередньо налаштовані профілі:
-
-> **Пароль для всіх службових ролей:** `skyguard-demo`
-
-| Роль | Рівень доступу | Email (Логін) | Пароль | Можливості в системі |
-|:---|:---|:---|:---|:---|
-| **Громадянин** *(Citizen)* | L1: PUBLIC | `citizen@skyguard.demo` | `skyguard-demo` | Пошук укриттів, пішохідна навігація SafeRoute, краудсорс-підтвердження |
-| **Верифікований волонтер** *(Volunteer)* | L1 / L2 | `volunteer@skyguard.demo` | `skyguard-demo` | Підтвердження статусів укриттів із підвищеною вагою голосу |
-| **Комендант укриття** *(Manager)* | L2 / L3 | `manager@skyguard.demo` | `skyguard-demo` | Керування закріпленим укриттям (`DEMO-0001`), відкриття замків Smart Lock |
-| **Оператор ДСНС** *(Operator)* | L3 / L4 | `dsns@skyguard.demo` | `skyguard-demo` | Моніторинг заповненості укриттів, контакти, оперативна зміна статусу |
-| **Аудитор безпеки** *(Auditor)* | L3 / L4 | `auditor@skyguard.demo` | `skyguard-demo` | Перегляд криптографічного журналу аудиту (SHA-256), розслідування інцидентів |
-
-*(Перемикання ролей доступне в 1 клік через іконку профілю `👤` у верхній шапці).*
-
----
-
-## 🧪 Запуск автоматичних тестів
-
-```bash
-# Запуск юніт-тестів та інтеграційних тестів із перевіркою покриття
-pytest -v --cov=app
-
-# Перевірка стилю коду та лінтер Ruff
-ruff check . && ruff format --check .
-```
+**Демо-відео (SG-17).** Кадри знімаються автоматично проти запущеного стеку: `python scripts/demo/record_demo.py`, потім `python scripts/demo/compose_video.py demo_capture.zip`. Подробиці в документації самих скриптів.
 
 ---
 
@@ -132,7 +197,6 @@ ruff check . && ruff format --check .
 │   ├── services/               # Бізнес-логіка: гаверсинус (DQ-1), кворум (DQ-3), аудит SHA-256
 │   └── seed.py                 # Генерація первинних демо-даних (укриття, ролі)
 ├── frontend/                   # Мобільний та веб-інтерфейс (Leaflet 1.9, Vanilla JS/CSS)
-│   ├── css/styles.css          # Стилі, адаптивна верстка, Bottom Sheet, Mobile Header
 │   ├── js/                     # Модульна архітектура клієнта:
 │   │   ├── api.js              # REST-клієнт та взаємодія з бекендом
 │   │   ├── audit.js            # Інтерактивна консоль аудиту подій SHA-256
@@ -143,11 +207,16 @@ ruff check . && ruff format --check .
 │   │   ├── security.js         # Керування згодою Opt-in, перемикач ролей, інциденти 403
 │   │   ├── state.js            # Централізований стан клієнтської сесії
 │   │   └── ui.js               # Керування модальними вікнами, картками укриттів, тостами
-│   └── index.html              # Розмітка веб-застосунку
+│   ├── index.html              # Розмітка веб-застосунку
+│   └── styles.css              # Стилі, адаптивна верстка, Bottom Sheet, Mobile Header
 ├── migrations/                 # Міграції бази даних (Alembic)
+├── scripts/
+│   ├── check_stack.py          # Перевірка, що весь стек піднявся (SG-24)
+│   └── demo/                   # Зйомка й монтаж демо-відео (SG-17)
 ├── tests/                      # Автоматизовані тести pytest (TC-01..TC-06, RBAC, DQ-1..DQ-3)
 ├── docs/                       # Технічна документація (API, схема БД, NFR, архітектура)
-├── docker-compose.yml          # Оркестрація контейнерів (db, api, frontend)
+├── docker-compose.yml          # Увесь стек однією командою (db, api, frontend)
+├── .env.example                # Необов'язкові налаштування (паролі, порти, CORS)
 ├── Dockerfile                  # Збірка контейнера бекенду
 └── README.md                   # Документація проєкту
 ```

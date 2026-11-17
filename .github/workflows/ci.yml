@@ -35,3 +35,21 @@ jobs:
       - name: pytest + coverage (NFR-M2, поріг 70%)
         run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=70
       - run: alembic downgrade base
+
+  # SG-24: прототип піднімається однією командою на чистій машині, без .env
+  compose-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose up (з нуля, без .env)
+        run: |
+          test ! -f .env
+          docker compose up -d --build --wait --wait-timeout 180
+      - name: Перевірка стеку
+        run: python3 scripts/check_stack.py
+      - name: Логи сервісів
+        if: failure()
+        run: docker compose ps -a && docker compose logs --no-color
+      - name: Прибрати
+        if: always()
+        run: docker compose down -v
