@@ -11,10 +11,20 @@ SkyGuard.Config = {
   // Ensures 100% reliable, deterministic demonstration for project evaluation:
   PROTOTYPE_MODE: true,
   ENABLE_LIVE_ALERTS_API: false,   // Manual button simulation for lab demo (no random background sirens)
-  ENABLE_WEBSOCKET_STREAM: false,  // Standalone prototype mode (clean console, zero background connection drops)
+  ENABLE_WEBSOCKET_STREAM: true,   // Live push of shelter.updated from the backend (SG-21, step 6 of the scenario)
 
   // Backend API Integration Settings (FastAPI SG-10 / SG-21)
-  API_BASE_URL: "https://skyguard-api-tcir.onrender.com/api/v1",
+  // Local run (docker compose, http.server) → local API on :8000; otherwise the Render deployment.
+  // Override for any environment: ?api=https://host/api/v1
+  API_BASE_URL: (() => {
+    const override = new URLSearchParams(window.location.search).get("api");
+    if (override) return override.replace(/\/$/, "");
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || window.location.protocol === "file:") {
+      return `http://${host || "localhost"}:8000/api/v1`;
+    }
+    return "https://skyguard-api-tcir.onrender.com/api/v1";
+  })(),
   API_TIMEOUT_MS: 4000,
 
   // Map Initial Coordinates (Lviv City Center)

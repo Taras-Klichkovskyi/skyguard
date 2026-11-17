@@ -1547,6 +1547,13 @@ table.audit-table td {
 .dialog-auth {
   max-width: 820px;
   width: 95vw;
+  max-height: 92vh;
+}
+
+/* Усі картки ролей не вміщаються на екрані ноутбука: тіло вікна прокручується */
+.dialog-auth .modal-body {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .auth-header-title {

@@ -10,7 +10,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import DbSession, authorize
 from app.core.policy import AUDIT_TRAIL_READ
@@ -86,6 +86,11 @@ def read_audit_trail(
         if curr_entry.prev_hash and prev_entry.hash and curr_entry.prev_hash != prev_entry.hash:
             integrity_verified = False
             break
+
+    # 2.1. Повна перевірка всього журналу: БД перераховує кожен хеш (audit_log_verify(),
+    # міграція 0001). Лише зв'язність prev_hash не виявить підміну вмісту запису.
+    if integrity_verified:
+        integrity_verified = db.scalar(select(func.audit_log_verify())) is None
 
     # 3. Фіксація факту читання аудитором
     read_event = audit_service.record(

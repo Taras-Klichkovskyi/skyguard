@@ -9,6 +9,37 @@ window.SkyGuard = window.SkyGuard || {};
 SkyGuard.Api = {
   baseUrl: SkyGuard.Config.API_BASE_URL,
 
+  /** Bearer token of the signed-in user (null for an anonymous visitor). */
+  currentToken() {
+    return (SkyGuard.Security && SkyGuard.Security.token) ||
+           localStorage.getItem("skyguard_token") ||
+           localStorage.getItem("skyguard_jwt_token") || null;
+  },
+
+  authHeaders(extra = {}) {
+    const token = this.currentToken();
+    return {
+      "Accept": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      ...extra
+    };
+  },
+
+  /** Unified call: never throws; returns {ok, status, data} or {ok:false, offline:true}. */
+  async request(method, path, body = undefined) {
+    try {
+      const resp = await fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers: this.authHeaders(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        body: body !== undefined ? JSON.stringify(body) : undefined
+      });
+      const data = await resp.json().catch(() => ({}));
+      return { ok: resp.ok, status: resp.status, data };
+    } catch (e) {
+      return { ok: false, offline: true, status: 0, data: { message: e.message } };
+    }
+  },
+
   /**
    * Fetches shelters list from FastAPI backend (or falls back to local data)
    * Target endpoint: GET /api/v1/shelters (SG-10)
@@ -61,88 +92,22 @@ SkyGuard.Api = {
    * Broadcasts official status change to backend API (SG-21)
    */
   async sendShelterStatusUpdate(shelterId, status, occupancy = null) {
-    try {
-      const fetchFreshToken = async () => {
-        try {
-          const resp = await fetch(`${this.baseUrl}/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: "dsns@skyguard.demo", password: "skyguard-demo" })
-          });
-          if (resp.ok) {
-            const data = await resp.json();
-            if (data.access_token) {
-              if (SkyGuard.Security) SkyGuard.Security.token = data.access_token;
-              localStorage.setItem("skyguard_token", data.access_token);
-              localStorage.setItem("skyguard_jwt_token", data.access_token);
-              localStorage.setItem("skyguard_op_token", data.access_token);
-              return data.access_token;
-            }
-          }
-        } catch (e) {}
-        return null;
-      };
-
-      let token = (SkyGuard.Security && SkyGuard.Security.token) ||
-                  localStorage.getItem("skyguard_token") ||
-                  localStorage.getItem("skyguard_jwt_token") ||
-                  localStorage.getItem("skyguard_op_token");
-
-      if (!token) {
-        token = await fetchFreshToken();
-      }
-
-      // Backend schema expects "OPEN", "FULL", "CLOSED" (LIMITED is mapped to FULL)
-      const backendStatus = (status === "LIMITED" ? "FULL" : status);
-      const payload = { status: backendStatus };
-      if (typeof occupancy === "number" && !isNaN(occupancy)) {
-        payload.occupancy = occupancy;
-      }
-
-      let targetId = shelterId;
-      const sObj = SkyGuard.State && SkyGuard.State.getShelterById(shelterId);
-      if (sObj && sObj.backendId) {
-        targetId = sObj.backendId;
-      }
-
-      let response = await fetch(`${this.baseUrl}/shelters/${targetId}/status`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-
-      // Auto-retry on 401 Unauthorized (expired JWT token)
-      if (response.status === 401) {
-        console.warn("[SkyGuard API] Token expired or invalid (401). Auto-refreshing DSNS session and retrying...");
-        token = await fetchFreshToken();
-        if (token) {
-          response = await fetch(`${this.baseUrl}/shelters/${targetId}/status`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify(payload)
-          });
-        }
-      }
-
-      if (response.ok) {
-        const resData = await response.json();
-        console.info(`[SkyGuard API] Status successfully persisted to DB (200 OK): ${targetId} → ${backendStatus} (occupancy: ${occupancy})`, resData);
-        return { success: true, status: response.status, data: resData };
-      } else {
-        const errJson = await response.json().catch(() => ({ detail: "Unknown error" }));
-        console.warn(`[SkyGuard API] Backend rejected status update (${response.status}):`, errJson);
-        return { success: false, status: response.status, error: errJson };
-      }
-    } catch (e) {
-      console.warn("[SkyGuard API] Network error during status update:", e.message);
-      return { success: false, error: e.message };
+    // Acts strictly as the signed-in user: the server decides by role (RBAC) whether
+    // the change is allowed. No hidden sign-in under another account.
+    const backendStatus = (status === "LIMITED" ? "FULL" : status);
+    const payload = { status: backendStatus };
+    if (typeof occupancy === "number" && !isNaN(occupancy)) {
+      payload.occupancy = occupancy;
     }
+    const sObj = SkyGuard.State && SkyGuard.State.getShelterById(shelterId);
+    const targetId = (sObj && sObj.backendId) || shelterId;
+    const res = await this.request("POST", `/shelters/${targetId}/status`, payload);
+    if (res.ok) {
+      console.info(`[SkyGuard API] Status persisted: ${targetId} → ${backendStatus}`, res.data);
+      return { success: true, status: res.status, data: res.data };
+    }
+    console.warn(`[SkyGuard API] Status update rejected (${res.status}):`, res.data);
+    return { success: false, status: res.status, error: res.data, offline: !!res.offline };
   },
 
   wsActive: false,
@@ -241,59 +206,35 @@ SkyGuard.Api = {
    * Target endpoint: POST /api/v1/shelters/{id}/reports
    */
   async submitStatusReport(shelterId, reportPayload) {
-    try {
-      const token = (SkyGuard.Security && SkyGuard.Security.token) ||
-                    localStorage.getItem("skyguard_token") ||
-                    localStorage.getItem("skyguard_jwt_token");
+    const res = await this.request("POST", `/shelters/${shelterId}/reports`, reportPayload);
+    if (res.ok) return { success: true, status: res.status, data: res.data };
+    return { success: false, status: res.status, error: res.data, offline: !!res.offline };
+  },
 
-      const headers = {
-        "Content-Type": "application/json",
-        "X-User-Role": SkyGuard.State.role
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const response = await fetch(`${this.baseUrl}/shelters/${shelterId}/reports`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(reportPayload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
-        return { success: false, status: response.status, error: errorData.detail };
-      }
-
-      return { success: true, status: response.status, data: await response.json() };
-    } catch (err) {
-      // Local simulation fallback
-      return { success: true, status: 200, simulated: true };
-    }
+  /**
+   * Commander contacts — CONFIDENTIAL (L3). Allowed: DSNS operator; shelter manager for own shelter.
+   * Target endpoint: GET /api/v1/shelters/{id}/contacts (SG-10)
+   */
+  async fetchShelterContacts(shelterId) {
+    return this.request("GET", `/shelters/${shelterId}/contacts`);
   },
 
   /**
    * Synchronizes user consent record with backend (Data Governance L1/L2)
-   * Target endpoint: POST /api/v1/consents (Purposes: ROUTE_GPS, REPORT_GEOFENCE, SOS)
+   * Target endpoints: POST /api/v1/consents, DELETE /api/v1/consents/{purpose} (Bearer token)
    */
-  async updateConsent(consentGranted, purpose = "ROUTE_GPS") {
-    try {
-      if (consentGranted) {
-        await fetch(`${this.baseUrl}/consents`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            purpose: purpose,
-            granted: true,
-            timestamp: new Date().toISOString()
-          })
-        });
-      } else {
-        await fetch(`${this.baseUrl}/consents/${purpose}`, {
-          method: "DELETE"
-        });
-      }
-    } catch (e) {
-      // Offline fallback silent
+  async updateConsent(consentGranted, purposes = ["ROUTE_GPS", "REPORT_GEOFENCE"]) {
+    if (!this.currentToken()) {
+      return [];  // anonymous visitor: consent stays in the browser only
     }
+    const results = [];
+    for (const purpose of purposes) {
+      const res = consentGranted
+        ? await this.request("POST", "/consents", { purpose })
+        : await this.request("DELETE", `/consents/${purpose}`);
+      results.push({ purpose, ...res });
+    }
+    return results;
   },
 
   /**

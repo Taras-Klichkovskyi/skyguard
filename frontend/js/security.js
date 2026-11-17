@@ -29,38 +29,39 @@ SkyGuard.Security = {
   },
 
   /**
-   * Simulates 403 Forbidden Security Incident (UC-03 / NFR-SEC-02)
+   * Access test on a CONFIDENTIAL resource (UC-03): commander contacts of the selected shelter.
+   * The request goes to the server; on 403 the dialog shows the server's audit record id.
+   * Target endpoint: GET /api/v1/shelters/{id}/contacts (SG-10)
    */
-  triggerForbiddenIncident() {
-    const isPrivileged = ["MANAGER", "OPERATOR", "AUDITOR"].includes(SkyGuard.State.role);
+  async triggerForbiddenIncident() {
+    const shelter = SkyGuard.State.getShelterById(SkyGuard.State.selectedShelterId);
+    if (!shelter) return;
+    const res = await SkyGuard.Api.fetchShelterContacts(shelter.backendId || shelter.id);
 
-    if (isPrivileged) {
-      SkyGuard.UI.showToast("🔓 Авторизація успішна: доступ до телеметрії замка надано (RBAC L3)", "success");
+    if (res.ok) {
+      const c = res.data;
+      shelter.commander = { ...(shelter.commander || {}), name: c.commander_name || "—", phone: c.commander_phone || "—" };
+      SkyGuard.UI.openShelterDetails(shelter.id);
+      SkyGuard.UI.showToast(`🔓 200 OK · доступ дозволено (CONFIDENTIAL): ${c.commander_name}, ${c.commander_phone}`, "success");
+      return;
+    }
+    if (res.offline) {
+      SkyGuard.UI.showToast("⚠️ Сервер недоступний: перевірку доступу не виконано", "error");
       return;
     }
 
-    const incidentId = "ae-" + Math.random().toString(36).substring(2, 6) + "-" + Math.random().toString(36).substring(2, 10);
-    const timestamp = new Date().toISOString();
-
-    const roleEl = document.getElementById("forbiddenCurrentRole");
-    const auditIdEl = document.getElementById("forbiddenAuditId");
-    const timeEl = document.getElementById("forbiddenTimestamp");
-
-    if (roleEl) roleEl.textContent = SkyGuard.State.role;
-    if (auditIdEl) auditIdEl.textContent = incidentId;
-    if (timeEl) timeEl.textContent = timestamp;
+    const err = res.data || {};
+    const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+    set("forbiddenHttpCode", `HTTP ${res.status}`);
+    set("forbiddenCurrentRole", err.role || SkyGuard.State.role);
+    set("forbiddenAuditId", err.audit_entry_id != null ? `#${err.audit_entry_id}` : "—");
+    set("forbiddenTimestamp", new Date().toISOString());
+    set("forbiddenErrorCode", err.error || `HTTP ${res.status}`);
+    set("forbiddenRequiredRoles", (err.required_roles || []).join(", ") || "—");
+    set("forbiddenRequestId", err.request_id || "—");
 
     const modal = document.getElementById("forbiddenModal");
     if (modal) modal.classList.add("active");
-
-    const shelterId = SkyGuard.State.selectedShelterId || "SH-LVIV-001";
-    SkyGuard.Audit.logEvent(
-      "READ_CONFIDENTIAL_TELEMETRY",
-      `shelter/${shelterId}/telemetry`,
-      "CONFIDENTIAL",
-      403,
-      incidentId
-    );
   },
 
   /**
@@ -76,9 +77,9 @@ SkyGuard.Security = {
     if (modal) modal.classList.remove("active");
   },
 
-  setConsent(granted) {
+  setConsent(granted, { sync = true } = {}) {
     SkyGuard.State.setConsent(granted);
-    SkyGuard.Api.updateConsent(granted);
+    if (sync) this.syncConsentWithServer(granted);
 
     const indicator = document.getElementById("consentBtn");
     const text = document.getElementById("consentStatusText");
@@ -86,11 +87,11 @@ SkyGuard.Security = {
     if (granted) {
       if (indicator) indicator.className = "geo-status-pill granted";
       if (text) text.textContent = "Геолокація активна";
-      SkyGuard.Audit.logEvent("CONSENT_OPT_IN_GRANTED", "user/citizen_01", "SENSITIVE", 200);
+      SkyGuard.Audit.logEvent("CONSENT_OPT_IN_GRANTED", "user/session", "SENSITIVE", 200);
     } else {
       if (indicator) indicator.className = "geo-status-pill denied";
       if (text) text.textContent = "Геолокація вимкнена";
-      SkyGuard.Audit.logEvent("CONSENT_OPT_OUT_REVOKED", "user/citizen_01", "SENSITIVE", 200);
+      SkyGuard.Audit.logEvent("CONSENT_OPT_OUT_REVOKED", "user/session", "SENSITIVE", 200);
     }
 
     SkyGuard.Map.updateUserMarker();
@@ -101,6 +102,27 @@ SkyGuard.Security = {
     }
 
     this.closeConsentModal();
+  },
+
+  /**
+   * Records the consent on the server for the signed-in user (purposes ROUTE_GPS, REPORT_GEOFENCE).
+   * Revocation is only sent if the server holds an active consent, so a fresh visit stays quiet.
+   */
+  async syncConsentWithServer(granted) {
+    const results = await SkyGuard.Api.updateConsent(granted);
+    if (!results.length) return;
+    if (granted) {
+      const created = results.filter(r => r.status === 201).length;
+      const ok = results.every(r => r.ok);
+      if (ok && created) {
+        SkyGuard.UI.showToast(`✓ 201 Created · згоду записано на сервері: ${results.map(r => r.purpose).join(", ")}`, "success");
+      } else if (!ok) {
+        const bad = results.find(r => !r.ok);
+        SkyGuard.UI.showToast(`⚠️ Згоду не записано на сервері (HTTP ${bad.status})`, "warning");
+      }
+    } else if (results.some(r => r.status === 200)) {
+      SkyGuard.UI.showToast("✓ Згоду відкликано на сервері", "info");
+    }
   },
 
   /**
@@ -209,9 +231,10 @@ SkyGuard.Security = {
       box.style.display = "block";
       title.textContent = `Підтвердження службового доступу: ${roleDef ? roleDef.label : targetRoleId}`;
       if (err) err.style.display = "none";
+      box.scrollIntoView({ behavior: "smooth", block: "center" });
       if (input) {
         input.value = "skyguard-demo";
-        input.focus();
+        input.focus({ preventScroll: true });
       }
     }
   },
@@ -280,6 +303,7 @@ SkyGuard.Security = {
         SkyGuard.Audit.fetchLiveAuditTrail();
         const modal = document.getElementById("auditModal");
         if (modal) modal.classList.add("active");
+        SkyGuard.Audit.startLiveSync();  // new events (e.g. a fresh 403) appear without reopening
       }, 200);
     }
 
@@ -319,6 +343,7 @@ SkyGuard.Security = {
           localStorage.setItem("skyguard_token", data.access_token);
           localStorage.setItem("skyguard_jwt_token", data.access_token);
           console.info(`[SkyGuard Auth] Live JWT obtained from backend: role=${data.role}`);
+          if (SkyGuard.State.consent) this.syncConsentWithServer(true);
         }
       } else {
         const errJson = await resp.json().catch(() => ({}));

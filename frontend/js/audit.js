@@ -187,6 +187,8 @@ SkyGuard.Audit = {
 
       if (resp.status === 200) {
         const data = await resp.json();
+        // Integrity verdict comes from the server (SHA-256 chain check over the returned slice)
+        this.serverIntegrity = (typeof data.integrity_verified === "boolean") ? data.integrity_verified : null;
         if (data && data.entries && data.entries.length > 0) {
           this.log = data.entries.map((e, idx) => ({
             seq: e.id || (idx + 1),
@@ -213,7 +215,17 @@ SkyGuard.Audit = {
   /**
    * Renders the audit log table into the modal dialog
    */
-  renderTable(filterStatus = null) {
+  // Active status filter (null = all); kept across live refreshes
+  currentFilter: null,
+
+  renderTable(filterStatus = undefined) {
+    if (filterStatus !== undefined) this.currentFilter = filterStatus;
+    filterStatus = this.currentFilter;
+    const chipIds = { null: "auditFilterAll", 200: "auditFilter200", 403: "auditFilter403", 422: "auditFilter422" };
+    Object.entries(chipIds).forEach(([key, id]) => {
+      const chip = document.getElementById(id);
+      if (chip) chip.classList.toggle("active", String(filterStatus) === key);
+    });
     const tbody = document.getElementById("auditTableBody");
     if (!tbody) return;
     tbody.innerHTML = "";
@@ -242,7 +254,12 @@ SkyGuard.Audit = {
     const strip = document.getElementById("auditStatusStrip");
     const label = document.getElementById("auditStatusLabel");
     if (strip && label) {
-      if (SkyGuard.State.tampered) {
+      if (this.serverIntegrity === false) {
+        strip.style.background = "#7f1d1d";
+        strip.style.borderColor = "#ef4444";
+        strip.style.color = "#fee2e2";
+        label.innerHTML = `⚠️ <b>Сервер виявив порушення ланцюга SHA-256!</b> integrity_verified = false`;
+      } else if (SkyGuard.State.tampered) {
         strip.style.background = "#7f1d1d";
         strip.style.borderColor = "#ef4444";
         strip.style.color = "#fee2e2";
@@ -251,7 +268,9 @@ SkyGuard.Audit = {
         strip.style.background = "#064e3b";
         strip.style.borderColor = "#059669";
         strip.style.color = "#6ee7b7";
-        label.innerHTML = `✓ Ланцюг SHA-256: <b>ЦІЛІСНИЙ</b> (${this.log.length} блоків перевірено HMAC-SHA-256)`;
+        label.innerHTML = this.serverIntegrity === true
+          ? `✓ Ланцюг SHA-256: <b>ЦІЛІСНИЙ</b> — перевірено сервером (${this.log.length} записів, integrity_verified = true)`
+          : `✓ Ланцюг SHA-256: <b>ЦІЛІСНИЙ</b> (${this.log.length} записів, локальний журнал)`;
       }
     }
   },

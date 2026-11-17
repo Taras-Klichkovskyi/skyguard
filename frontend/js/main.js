@@ -53,13 +53,14 @@ SkyGuard.init = async function () {
 
   // 7. Check Geolocation Consent state (Default: grey / disabled; ask permission on first entry)
   const savedConsent = localStorage.getItem("skyguard_consent");
+  // Restoring the saved choice is local only; the server copy is synced on sign-in and on change.
   if (savedConsent === "granted") {
-    SkyGuard.Security.setConsent(true);
+    SkyGuard.Security.setConsent(true, { sync: false });
   } else if (savedConsent === "denied") {
-    SkyGuard.Security.setConsent(false);
+    SkyGuard.Security.setConsent(false, { sync: false });
   } else {
     // Fresh visit: ask for permission right away!
-    SkyGuard.Security.setConsent(false);
+    SkyGuard.Security.setConsent(false, { sync: false });
     setTimeout(() => {
       SkyGuard.Security.openConsentModal();
     }, 600);
@@ -396,7 +397,7 @@ SkyGuard.bindEvents = function () {
   const filter403 = document.getElementById("auditFilter403");
   const filter422 = document.getElementById("auditFilter422");
 
-  if (filterAll) filterAll.addEventListener("click", () => SkyGuard.Audit.renderTable());
+  if (filterAll) filterAll.addEventListener("click", () => SkyGuard.Audit.renderTable(null));
   if (filter200) filter200.addEventListener("click", () => SkyGuard.Audit.renderTable(200));
   if (filter403) filter403.addEventListener("click", () => SkyGuard.Audit.renderTable(403));
   if (filter422) filter422.addEventListener("click", () => SkyGuard.Audit.renderTable(422));

@@ -256,7 +256,7 @@
           </button>
           <button class="btn-action-telemetry" id="requestTelemetryBtn">
             <span>🔐</span>
-            <span>Телеметрія замка (Тест доступу 403)</span>
+            <span>Службові контакти коменданта (тест доступу 403)</span>
           </button>
         </div>
 
@@ -371,22 +371,23 @@
     <div class="modal-dialog dialog-forbidden">
       <div class="modal-header">
         <h2>🚫 403 Forbidden</h2>
-        <span class="forbidden-code-badge">HTTP 403</span>
+        <span class="forbidden-code-badge" id="forbiddenHttpCode">HTTP 403</span>
       </div>
       <div class="modal-body">
         <p><b style="color: #f87171;">Відмовлено в доступі за політикою безпеки (RBAC)!</b></p>
-        <p>Ваша поточна роль (<b id="forbiddenCurrentRole">Громадянин</b>) не володіє правами для керування службовими замками укриття. Даний функціонал доступний лише офіцерам ДСНС або відповідальним комендантам.</p>
+        <p>Ваша поточна роль (<b id="forbiddenCurrentRole">CITIZEN</b>) не має доступу до службових контактів коменданта (клас даних CONFIDENTIAL). Вони доступні лише оператору ДСНС і коменданту закріпленого укриття.</p>
 
         <div class="incident-box">
           <div><b>ІНЦИДЕНТ БЕЗПЕКИ ЗАРЕЄСТРОВАНО:</b></div>
-          <div style="margin-top: 4px;">audit_entry_id: <span id="forbiddenAuditId">ae-9f2d-88b14a9c</span></div>
-          <div>timestamp: <span id="forbiddenTimestamp">2026-11-10T15:30:12Z</span></div>
-          <div>action: READ_CONFIDENTIAL_TELEMETRY</div>
-          <div>policy: RBAC_RESTRICTED_ACCESS</div>
+          <div style="margin-top: 4px;">audit_entry_id: <span id="forbiddenAuditId">—</span></div>
+          <div>error: <span id="forbiddenErrorCode">DENIED_403_RBAC</span></div>
+          <div>required_roles: <span id="forbiddenRequiredRoles">—</span></div>
+          <div>request_id: <span id="forbiddenRequestId">—</span></div>
+          <div>timestamp: <span id="forbiddenTimestamp">—</span></div>
         </div>
 
         <p style="font-size: 0.78rem; color: var(--text-dim);">
-          Факт несанкціонованої спроби доступу зафіксовано в незмінному криптографічному журналі аудиту SHA-256 і передано офіцеру безпеки системи.
+          Відмову сервер записав у незмінний журнал аудиту (ланцюжок SHA-256) до того, як надіслав відповідь. Аудитор знайде її за номером запису.
         </p>
       </div>
       <div class="modal-footer">

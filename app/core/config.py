@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     # Звідки дозволено звертатися браузерному клієнту (через кому)
     cors_origins: str = (
         "http://localhost:5500,http://127.0.0.1:5500,http://localhost:5173,"
-        "http://localhost:8080,http://localhost:8085"
+        "http://localhost:8080,http://localhost:8085,http://127.0.0.1:8085"
     )
 
     # Правила якості даних (SG-2)
